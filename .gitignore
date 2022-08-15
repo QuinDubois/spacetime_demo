@@ -16,3 +16,6 @@ cubeOps.Rmd
 demoData/.DS_Store
 plotting.Rmd
 demoData/cubeDay.nc4
+demoData/Carya_ovata/Carya_ovata_sim_disc_10km.tif
+demoData/Carya_ovata/Carya_ovata_sim_disc_1km.tif
+demoData/Other/Tundra_Cover_North_Slope.tif
