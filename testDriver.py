@@ -6,6 +6,9 @@ from spacetime.operations.cubeSmasher import cube_smasher
 from spacetime.operations.makeCube import make_cube
 from spacetime.operations.loadCube import load_cube
 from spacetime.graphics.dataPlot import plot_cube
+
+from spacetime.graphics.dataPlotTest import plot_cube_test
+
 from spacetime.operations.time import cube_time, return_time, scale_time, select_time
 import matplotlib.pyplot as plt
 from spacetime.operations.cubeToDataframe import cube_to_dataframe
@@ -22,9 +25,8 @@ import re
 # read in data set
 ########################################################################################################################
 # a list of paths to raster files
-file1 = "/Users/pburnham/Documents/geospatialData/Carya_ovata/Carya_ovata_sim_disc_1km.tif"
-file2 = "/Users/pburnham/Documents/geospatialData/Carya_ovata/Carya_ovata_sim_disc_10km.tif"
-
+file1 = "demoData/Carya_ovata/Carya_ovata_sim_disc_1km.tif"
+file2 = "demoData/Carya_ovata/Carya_ovata_sim_disc_10km.tif"
 
 data = [file2, file2]
 
@@ -54,7 +56,6 @@ ds = make_cube(data = trimmed, fileName = "test.nc4", organizeFiles = "filestova
 # print(newtest.get_raster_data())
 
 
-
 # #answer = cube_smasher(function=np.max, parentCube = ds, a=[ds,ds],axis=0)
 # answer = cube_smasher(eq = "a * c", a = ds, c = 5, parentCube = ds)
 #
@@ -71,7 +72,8 @@ ds = make_cube(data = trimmed, fileName = "test.nc4", organizeFiles = "filestova
 # answer = cube_smasher(eq = "a * c", a = y, c = 5, parentCube = y)
 #
 # # plot the cube and output the data set in dataframe format that made the plot
-plot_cube(cube=ds, variable="1", type="time_series", summary = "max", showPlot = True)
+# plot_cube(cube=ds, variable="0", type="control", summary = "max", showPlot = True)
+plot_cube_test(cube=ds, variable='1', plot_type='control', summary='mean', show_plot=True)
 
 # # convert a cube into a dataframe
 # df = cube_to_dataframe(cube=ds)

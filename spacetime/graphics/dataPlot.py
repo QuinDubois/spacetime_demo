@@ -1,7 +1,11 @@
 import numpy as np
 import plotly_express as px
+import plotly.graph_objects as go
 
-def plot_cube(cube, type="space", variable = None, summary="mean", showPlot = True):
+from spacetime.graphics.controlCubeSorter import sort_cube_data
+
+
+def plot_cube(cube, plot_type="space", variable = None, summary="mean", show_plot = True):
 
     # load data
     ds = cube.get_raster_data()
@@ -13,7 +17,7 @@ def plot_cube(cube, type="space", variable = None, summary="mean", showPlot = Tr
         df = ds.to_dataframe(name = "value", dim_order = ["lat", "lon", "variables", "time"])
         df = df.reset_index()
 
-        if type == "space":
+        if plot_type == "space":
             if variable == None:
                 dfPlot = df[df["variables"]==df["variables"][0]]
             else:
@@ -26,7 +30,7 @@ def plot_cube(cube, type="space", variable = None, summary="mean", showPlot = Tr
         df = ds.to_dataframe(name = "value", dim_order = ["lat", "lon", "time"])
         dfPlot = df.reset_index()
 
-    if type == "space":
+    if plot_type == "space":
 
         dfPlot = dfPlot.where(dfPlot != cube.get_nodata_value())
 
@@ -35,7 +39,6 @@ def plot_cube(cube, type="space", variable = None, summary="mean", showPlot = Tr
         maxVal = np.nanmax(df["value"])
 
         out = dfPlot
-        
 
         coords = cube.upper_left_corner()
         #print(coords)
@@ -55,10 +58,10 @@ def plot_cube(cube, type="space", variable = None, summary="mean", showPlot = Tr
             font=dict(color="#7fafdf"),
             )
 
-        if showPlot == True:
+        if show_plot == True:
             fig.show()
 
-    if type == "time_series":
+    if plot_type == "timeseries":
 
         dfPlot = dfPlot.where(dfPlot != cube.get_nodata_value())
 
@@ -98,7 +101,52 @@ def plot_cube(cube, type="space", variable = None, summary="mean", showPlot = Tr
             font=dict(color="#7fafdf"),
             )
 
-        if showPlot == True:
+        if show_plot == True:
+            fig.show()
+
+        out = summDF
+
+    if plot_type == "control":
+
+        dfPlot = dfPlot.where(dfPlot != cube.get_nodata_value())
+
+        if shapeVal == 4:
+
+            if summary == "mean":
+                summDF = dfPlot.groupby(['time', "variables"]).mean().reset_index()
+            if summary == "median":
+                summDF = dfPlot.groupby(['time', "variables"]).median().reset_index()
+            if summary == "min":
+                summDF = dfPlot.groupby(['time', "variables"]).min().reset_index()
+            if summary == "max":
+                summDF = dfPlot.groupby(['time', "variables"]).max().reset_index()
+
+            summDF.insert(loc=0, column='timeChar', value = summDF["time"].astype(str))
+            time = summDF["timeChar"]
+            fig = px.line(summDF, x=time, y="value", color='variables', markers=True)
+
+        else:
+
+            if summary == "mean":
+                summDF = dfPlot.groupby('time').mean().reset_index()
+            if summary == "median":
+                summDF = dfPlot.groupby('time').median().reset_index()
+            if summary == "min":
+                summDF = dfPlot.groupby('time').min().reset_index()
+            if summary == "max":
+                summDF = dfPlot.groupby('time').max().reset_index()
+
+            summDF.insert(loc=0, column='timeChar', value = summDF["time"].astype(str))
+            time = summDF["timeChar"]
+            fig = px.line(summDF, x=time, y="value", markers=True)
+
+        fig.update_layout(margin={"r":0,"t":0,"l":20,"b":0},
+            plot_bgcolor="#252e3f",
+            paper_bgcolor="#252e3f",
+            font=dict(color="#7fafdf"),
+            )
+
+        if show_plot == True:
             fig.show()
 
         out = summDF

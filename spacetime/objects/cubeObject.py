@@ -92,6 +92,7 @@ class cube(object):
     def spatial_reference(self):
         out = self.cubeObj.variables["spatial_ref"]
         return out
+
     def get_raster_data(self, variables=None):
 
         if self.fileStruc == "filestotime":
@@ -125,3 +126,9 @@ class cube(object):
 
 
         return outMat
+
+    def get_shapeval(self):
+        ds = self.get_raster_data()
+        shapeVal = len(ds.shape)
+
+        return shapeVal
