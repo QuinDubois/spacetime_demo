@@ -3,6 +3,8 @@ import pandas
 import pandas as pd
 import numpy as np
 
+from typing import Tuple, List
+
 
 # Main Method
 ########################################################################################################################
@@ -11,39 +13,101 @@ def sort_cube_data(
         FLAGS,
         showavg="all",
         showdeviations="all",
+        deviation_coefficient=1,
         showtrends="updown",
 
-) -> pandas.DataFrame:
+) -> Tuple[pandas.DataFrame, List]:
     print("Sorting through data in cube.")
 
     df_sorted = df
-    df_sorted.insert(loc=0, name='flags', value='base')
+    df_sorted.insert(loc=0, column='flag', value='base')
 
     if showavg != 'none':
-        df_sorted = sort_average(df)
+        df_sorted = sort_average(df, showavg)
     if showdeviations != 'none':
-        df_sorted = sort_deviations(df)
+        df_sorted = sort_deviations(df, showdeviations, coefficient=deviation_coefficient)
     if showtrends != 'none':
-        df_sorted = sort_trends(df)
+        segments = sort_trends(df, showtrends)
     else:
         df_sorted = df
 
-    return df_sorted
+    return df_sorted, segments
 
 
 # Helper methods
 ########################################################################################################################
-def sort_average(df, flags) -> pandas.DataFrame:
-
-    # TODO: Don't forget to figure out whether you actually need to give this method the flags.
-    # TODO: Continue Here
+def sort_average(df, showavg) -> pandas.DataFrame:
+    avg = get_avg(df)
+    if showavg != 'below':
+        df.loc[(df['value'] > avg), 'flag'] = 'above_avg'
+    if showavg != 'above':
+        df.loc[(df['value'] < avg), 'flag'] = 'below_avg'
 
     return df
 
 
-def sort_deviations(df) -> pandas.DataFrame:
+def sort_deviations(df, showdeviations, coefficient) -> pandas.DataFrame:
+    std = np.std(df['value'])
+    avg = get_avg(df)
+    if showdeviations != 'below':
+        df.loc[(df['value'] - (std * coefficient) > avg), 'flag'] = 'deviation_above'
+    if showdeviations != 'above':
+        df.loc[(df['value'] - (-(std * coefficient)) < avg), 'flag'] = 'deviation_below'
+
     return df
 
 
-def sort_trends(df) -> pandas.DataFrame:
-    return df
+def sort_trends(df, showtrends) -> List:
+    min_change = 10
+    curr_changes = 0
+    last_sign = 1
+    last_change_idx = 0
+    bounds_idx = [0]
+    cumulative_slope = [0]
+
+    df['row'] = np.arange(len(df))
+
+    # for each data point, calculate the slope of the linear regression that includes all the data points before it
+    for i in range(1, df.shape[0]):
+        segment = df.iloc[0:i + 1, :]
+
+        slope = calc_slope(segment)
+        cumulative_slope.append(slope)
+
+        # compare the current cumulative slope with the previous, and keep track of whether it increased or decreased
+        # as well as how many times it has changed in that direction, and where it last changed direction
+        if abs(cumulative_slope[i]) < abs(cumulative_slope[i - 1]):
+            if last_sign == 1:
+                curr_changes = 0
+            if curr_changes == 0:
+                last_change_idx = i
+            curr_changes += 1
+            last_sign = -1
+
+        elif abs(cumulative_slope[i]) > abs(cumulative_slope[i - 1]):
+            if last_sign == -1:
+                curr_changes = 0
+            if curr_changes == 0:
+                last_change_idx = i
+            curr_changes += 1
+            last_sign = 1
+
+        # if we meet the minimum amount of times the slope changes in a direction, mark the last time it changed
+        # and reset the change counter
+        if curr_changes == min_change:
+            curr_changes = 0
+            bounds_idx.append(last_change_idx)
+
+    # add the last point in the dataset to the bounds just to ensure we encapsulate all points
+    bounds_idx.append(df.shape[0] - 1)
+    return bounds_idx
+
+
+def get_avg(df):
+    return np.average(df['value'])
+
+
+def calc_slope(df):
+
+    slope = np.polyfit(df['row'], df['value'], 1)
+    return slope[0]
