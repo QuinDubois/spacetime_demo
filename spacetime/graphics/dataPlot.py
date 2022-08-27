@@ -172,20 +172,37 @@ def plot_control(df, showavg, showdeviations, deviation_coefficient, showtrends)
         for start_idx, end_idx in zip(segments[:-1], segments[1:]):
             segment = df_plot.iloc[start_idx:end_idx + 1, :]
 
-            segment['serialTime'] = [(d - datetime.datetime(1970, 1, 1)).days for d in segment['time']]
+            # TODO: Figure out why this is still throwing a SettingWithCopyWarning.
+            segment.loc[:, 'serial_time'] = [(d - datetime.datetime(1970, 1, 1)).days for d in segment.loc[:, 'time']]
 
-            x = sm.add_constant(segment['serialTime'])
+            x = sm.add_constant(segment['serial_time'])
             model = sm.OLS(segment['value'], x).fit()
-            segment['bestfit'] = model.fittedvalues
+            segment.loc[:, 'fitted_values'] = model.fittedvalues
 
-            fit_color = COLOR_STYLES['marker_colors'][4] if model.params['serialTime'] > 0 else COLOR_STYLES['marker_colors'][5]
+            fit_color = COLOR_STYLES['marker_colors'][4] if model.params['serial_time'] > 0 \
+                else COLOR_STYLES['marker_colors'][5]
 
-            # TODO: Add conditions for filtering trends by positive, negative, and p significance.
-            
-            if model.f_pvalue < 0.05:
+            print_trend = False
+
+            if showtrends == 'all':
+                print_trend = True
+            else:
+                if model.f_pvalue < 0.05:
+                    if showtrends == 'up' and model.params['serial_time'] > 0:
+                        print_trend = True
+                    elif showtrends == 'down' and model.params['serial_time'] <= 0:
+                        print_trend = True
+                    elif showtrends == 'updown':
+                        print_trend = True
+                    else:
+                        pass
+                else:
+                    pass
+
+            if print_trend:
                 fig.add_trace(go.Scatter(
                     x=segment['time'],
-                    y=segment['bestfit'],
+                    y=segment['fitted_values'],
                     mode='lines',
                     line=dict(color=fit_color),
                 ))
@@ -235,7 +252,6 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
                 df_plot = df_plot.groupby('time').max().reset_index()
 
     df_plot.insert(loc=0, column='timeChar', value=df['time'].astype(str))
-    df_plot.insert(loc=0, column='serialTime', value=0)
 
     return df_plot
 
