@@ -3,7 +3,6 @@ import pandas as pd
 import plotly_express as px
 import plotly.graph_objects as go
 
-import scipy.stats as sp
 import statsmodels.api as sm
 import datetime
 
@@ -220,7 +219,7 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
         if variable is None:
             df_plot = df[df['variables'] == df['variables'][0]]
         elif variable not in df['variables'].unique():
-            raise NotImplementedError()
+            raise ValueError("Value does not exist in 'variables'")
         else:
             df_plot = df[df['variables'] == variable]
     else:
