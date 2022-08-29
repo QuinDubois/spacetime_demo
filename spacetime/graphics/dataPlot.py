@@ -170,14 +170,13 @@ def plot_control(df, showavg, showdeviations, deviation_coefficient, showtrends)
 
     if showtrends != 'none':
         for start_idx, end_idx in zip(segments[:-1], segments[1:]):
-            segment = df_plot.iloc[start_idx:end_idx + 1, :]
+            segment = df_plot.iloc[start_idx:end_idx + 1, :].copy()
 
-            # TODO: Figure out why this is still throwing a SettingWithCopyWarning.
-            segment.loc[:, 'serial_time'] = [(d - datetime.datetime(1970, 1, 1)).days for d in segment.loc[:, 'time']]
+            segment['serial_time'] = [(d - datetime.datetime(1970, 1, 1)).days for d in segment['time']]
 
             x = sm.add_constant(segment['serial_time'])
             model = sm.OLS(segment['value'], x).fit()
-            segment.loc[:, 'fitted_values'] = model.fittedvalues
+            segment['fitted_values'] = model.fittedvalues
 
             fit_color = COLOR_STYLES['marker_colors'][4] if model.params['serial_time'] > 0 \
                 else COLOR_STYLES['marker_colors'][5]
