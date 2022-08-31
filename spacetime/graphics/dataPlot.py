@@ -55,12 +55,15 @@ def plot_cube(
     df_plot = organize_dataframe(cube, plot_type, variable, summary)
 
     if plot_type == 'space':
+        print("Plotting Space")
         fig = plot_spatial(cube, df_plot)
 
     if plot_type == 'timeseries':
+        print("Plotting Time")
         fig = plot_timeseries(df_plot)
 
     if plot_type == 'control':
+        print("Plotting Control")
         fig = plot_control(df_plot, showavg, showdeviations, deviation_coefficient, showtrends)
 
     if show_plot:
@@ -216,12 +219,13 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
 
     if shape_val == 4:
         print("Filtering Variable")
-        if variable is None:
-            df_plot = df[df['variables'] == df['variables'][0]]
-        elif variable not in df['variables'].unique():
-            raise ValueError("Value does not exist in 'variables'")
+        if plot_type == "space":
+            if variable == None:
+                df_plot = df[df['variables'] == df['variables'][0]]
+            else:
+                df_plot = df[df['variables'] == variable]
         else:
-            df_plot = df[df['variables'] == variable]
+            df_plot = df
     else:
         df_plot = df
 
@@ -232,26 +236,28 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
         print("GroupingBy summary")
         if shape_val == 4:
             if summary == "mean":
-                df_plot = df_plot.groupby(['time', "variables"]).mean().reset_index()
+                summ_df = df_plot.groupby(["time", "variables"]).mean().reset_index()
             if summary == "median":
-                df_plot = df_plot.groupby(['time', "variables"]).median().reset_index()
+                summ_df = df_plot.groupby(['time', "variables"]).median().reset_index()
             if summary == "min":
-                df_plot = df_plot.groupby(['time', "variables"]).min().reset_index()
+                summ_df = df_plot.groupby(['time', "variables"]).min().reset_index()
             if summary == "max":
-                df_plot = df_plot.groupby(['time', "variables"]).max().reset_index()
+                summ_df = df_plot.groupby(['time', "variables"]).max().reset_index()
         else:
             if summary == "mean":
-                df_plot = df_plot.groupby('time').mean().reset_index()
+                summ_df = df_plot.groupby('time').mean().reset_index()
             if summary == "median":
-                df_plot = df_plot.groupby('time').median().reset_index()
+                summ_df = df_plot.groupby('time').median().reset_index()
             if summary == "min":
-                df_plot = df_plot.groupby('time').min().reset_index()
+                summ_df = df_plot.groupby('time').min().reset_index()
             if summary == "max":
-                df_plot = df_plot.groupby('time').max().reset_index()
+                summ_df = df_plot.groupby('time').max().reset_index()
+    else:
+        summ_df = df_plot
 
-    df_plot.insert(loc=0, column='timeChar', value=df['time'].astype(str))
+    summ_df.insert(loc=0, column='timeChar', value=summ_df['time'].astype(str))
 
-    return df_plot
+    return summ_df
 
 
 def update_fig_layout(fig) -> go.Figure:
