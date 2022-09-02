@@ -3,39 +3,43 @@ import pandas as pd
 import plotly_express as px
 import plotly.graph_objects as go
 
+from typing import Optional, Union
+
 import statsmodels.api as sm
 import datetime
 
 from spacetime.graphics.controlCubeSorter import sort_cube_data
 from spacetime.operations.cubeToDataframe import cube_to_dataframe
 
+
+# Style color presets
 COLOR_STYLES = {
     "chart_background": "#222831",
     "chart_grid": "#41434a",
     "tick_font": "#bbbbbb",
     "font": "#bbbbbb",
     "line_colors": [
-        "#007f85"
+        "#777777"
     ],
     "marker_colors": [
-        "#FAEA48",
-        "#c47e0e",
-        "#4951de",
-        "#bd51c9",
-        "#4cbf39",
-        "#c95034",
+        "#FF00FF",
+        "#00FFFF",
+        "#0000FF",
+        "#FFFF00",
+        "#00FF00",
+        "#FF0000",
     ]
 }
 
-# flags for sorting the selected data
+# flags for sorting the selected data, Currently unused.
 FLAGS = {
-    "base"              : COLOR_STYLES["line_colors"][0],
-    "below_avg"     : COLOR_STYLES["marker_colors"][0],
-    "above_avg"     : COLOR_STYLES["marker_colors"][1],
-    "deviation_above"   : COLOR_STYLES["marker_colors"][2],
-    "deviation_below"   : COLOR_STYLES["marker_colors"][3],
-    "trending_up"       : COLOR_STYLES["marker_colors"][4],
-    "trending_down"     : COLOR_STYLES["marker_colors"][5],
+    "base"              : ["Base", COLOR_STYLES["line_colors"][0]],
+    "below_avg"         : ["Below Average", COLOR_STYLES["marker_colors"][0]],
+    "above_avg"         : ["Above Average", COLOR_STYLES["marker_colors"][1]],
+    "deviation_above"   : ["Deviation Below", COLOR_STYLES["marker_colors"][2]],
+    "deviation_below"   : ["Deviation Above", COLOR_STYLES["marker_colors"][3]],
+    "trending_up"       : ["Trending Up", COLOR_STYLES["marker_colors"][4]],
+    "trending_down"     : ["Trending Down", COLOR_STYLES["marker_colors"][5]],
 }
 
 
@@ -43,15 +47,16 @@ FLAGS = {
 ########################################################################################################################
 def plot_cube(
         cube,
-        plot_type: str = "time_series",
-        variable: str = None,
+        plot_type: str = "timeseries",
+        variable: Optional[Union[str, int]] = None,
         summary: str = "mean",
-        showavg: str = "all",
-        showdeviations: str = "all",
+        show_avg: str = "all",
+        show_deviations: str = "all",
         deviation_coefficient=1,
-        showtrends: str = "updown",
+        show_trends: str = "updown",
         show_plot: bool = True,
 ) -> None:
+
     df_plot = organize_dataframe(cube, plot_type, variable, summary)
 
     if plot_type == 'space':
@@ -64,7 +69,7 @@ def plot_cube(
 
     if plot_type == 'control':
         print("Plotting Control")
-        fig = plot_control(df_plot, showavg, showdeviations, deviation_coefficient, showtrends)
+        fig = plot_control(df_plot, show_avg, show_deviations, deviation_coefficient, show_trends)
 
     if show_plot:
         fig.show()
@@ -90,11 +95,13 @@ def plot_spatial(cube, df) -> go.Figure:
         color_continuous_scale='Viridis',
         opacity=0.5,
     )
+
     fig.update_layout(
         mapbox_style='carto-darkmatter',
         mapbox_zoom=3,
         mapbox_center={'lat': coords[0], 'lon': coords[1]},
-    )
+    )  # Spatial chart specific layout options.
+
     fig = update_fig_layout(fig)
 
     return fig
@@ -111,66 +118,45 @@ def plot_timeseries(df) -> go.Figure:
     return fig
 
 
-def plot_control(df, showavg, showdeviations, deviation_coefficient, showtrends) -> go.Figure:
+# Plot a control chart
+def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_trends) -> go.Figure:
 
-    df_plot, segments = sort_cube_data(df, FLAGS, showavg='all', showdeviations='all', showtrends='updown')
-    # print(df['flags'].unique())
-    # print(segments)
+    # Additional processing necessary for control chart plotting.
+    df_plot, segments = sort_cube_data(df, FLAGS, show_avg='all', show_deviations='all', show_trends='updown')
+
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
         x=df_plot['time'],
         y=df_plot['value'],
         mode='lines',
-        line_color=COLOR_STYLES['line_colors'][0],
+        line_color=FLAGS['base'][1],
         showlegend=False,
-    ))
+    ))  # Base line plot
 
-    if showavg != 'none':
-        summ_df = df_plot[df_plot.flag == 'above_avg']
-        if not summ_df.empty:
-            fig.add_trace(go.Scatter(
-                x=summ_df['time'],
-                y=summ_df['value'],
-                mode='markers',
-                name='Above Average',
-                marker_color=COLOR_STYLES['marker_colors'][0],
-                showlegend=True,
-            ))
-        summ_df = df_plot[df_plot.flag == 'below_avg']
-        if not summ_df.empty:
-            fig.add_trace(go.Scatter(
-                x=summ_df['time'],
-                y=summ_df['value'],
-                mode='markers',
-                name='Below Average',
-                marker_color=COLOR_STYLES['marker_colors'][1],
-                showlegend=True,
-            ))
+    for key in FLAGS.keys():
+        summ_df = df_plot[df_plot.flag == key]
+        if show_avg != 'none':
+            if key == 'above_avg' and show_avg != 'below':
+                marker_name = FLAGS[key][0]
+                marker_color = FLAGS[key][1]
+                fig = add_markers(summ_df, fig, marker_name, marker_color)
+            if key == 'below_avg' and show_avg != 'above':
+                marker_name = FLAGS[key][0]
+                marker_color = FLAGS[key][1]
+                fig = add_markers(summ_df, fig, marker_name, marker_color)
 
-    if showdeviations != 'none':
-        summ_df = df_plot[df_plot.flag == 'deviation_above']
-        if not summ_df.empty:
-            fig.add_trace(go.Scatter(
-                x=summ_df['time'],
-                y=summ_df['value'],
-                mode='markers',
-                name='Deviation Above',
-                marker_color=COLOR_STYLES['marker_colors'][2],
-                showlegend=True,
-            ))
-        summ_df = df_plot[df_plot.flag == 'deviation_below']
-        if not summ_df.empty:
-            fig.add_trace(go.Scatter(
-                x=summ_df['time'],
-                y=summ_df['value'],
-                mode='markers',
-                name='Deviation Below',
-                marker_color=COLOR_STYLES['marker_colors'][3],
-                showlegend=True,
-            ))
+        if show_deviations != 'none':
+            if key == 'deviation_above' and show_avg != 'below':
+                marker_name = FLAGS[key][0]
+                marker_color = FLAGS[key][1]
+                fig = add_markers(summ_df, fig, marker_name, marker_color)
+            if key == 'deviation_below' and show_avg != 'above':
+                marker_name = FLAGS[key][0]
+                marker_color = FLAGS[key][1]
+                fig = add_markers(summ_df, fig, marker_name, marker_color)
 
-    if showtrends != 'none':
+    if show_trends != 'none':
         for start_idx, end_idx in zip(segments[:-1], segments[1:]):
             segment = df_plot.iloc[start_idx:end_idx + 1, :].copy()
 
@@ -183,17 +169,19 @@ def plot_control(df, showavg, showdeviations, deviation_coefficient, showtrends)
             fit_color = COLOR_STYLES['marker_colors'][4] if model.params['serial_time'] > 0 \
                 else COLOR_STYLES['marker_colors'][5]
 
+            trend_name = "Trending Up" if model.params['serial_time'] > 0 else "Trending Down"
+
             print_trend = False
 
-            if showtrends == 'all':
+            if show_trends == 'all':
                 print_trend = True
             else:
                 if model.f_pvalue < 0.05:
-                    if showtrends == 'up' and model.params['serial_time'] > 0:
+                    if show_trends == 'up' and model.params['serial_time'] > 0:
                         print_trend = True
-                    elif showtrends == 'down' and model.params['serial_time'] <= 0:
+                    elif show_trends == 'down' and model.params['serial_time'] <= 0:
                         print_trend = True
-                    elif showtrends == 'updown':
+                    elif show_trends == 'updown':
                         print_trend = True
                     else:
                         pass
@@ -206,13 +194,22 @@ def plot_control(df, showavg, showdeviations, deviation_coefficient, showtrends)
                     y=segment['fitted_values'],
                     mode='lines',
                     line=dict(color=fit_color),
+                    name=trend_name,
                 ))
+
+        # Ensure duplicate legend items get filtered
+        legend_names = set()
+        fig.for_each_trace(
+            lambda trace:
+                trace.update(showlegend=False) if (trace.name in legend_names) else legend_names.add(trace.name)
+        )
 
     return fig
 
 
 # Helper methods
 ########################################################################################################################
+# Process Cube data for chart plotting
 def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
     df = cube_to_dataframe(cube)
     shape_val = cube.get_shapeval()
@@ -260,6 +257,20 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
     return summ_df
 
 
+# Add trace
+def add_markers(df, fig, marker_name, marker_color):
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['value'],
+        mode='markers',
+        name=marker_name,
+        marker_color=marker_color,
+    ))
+
+    return fig
+
+
+# Chart Figure layout update
 def update_fig_layout(fig) -> go.Figure:
     fig.update_layout(
         margin={"r": 0, "t": 0, "l": 20, "b": 0},

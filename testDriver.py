@@ -7,8 +7,6 @@ from spacetime.operations.makeCube import make_cube
 from spacetime.operations.loadCube import load_cube
 from spacetime.graphics.dataPlot import plot_cube
 
-# from spacetime.graphics.dataPlot_old import plot_cube_old
-
 from spacetime.operations.time import cube_time, return_time, scale_time, select_time
 import matplotlib.pyplot as plt
 from spacetime.operations.cubeToDataframe import cube_to_dataframe
@@ -75,8 +73,8 @@ ds = make_cube(data = trimmed, fileName = "test.nc4", organizeFiles = "filestova
 # plot_cube_old(cube=ds, type="time_series", summary = "mean", showPlot = True)
 plot_cube(
     cube=ds,
-    plot_type='timeseries',
-    summary='mean',
+    plot_type='control',
+    summary='max',
     show_plot=True,
 )
 

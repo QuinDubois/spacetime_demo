@@ -11,10 +11,10 @@ from typing import Tuple, List
 def sort_cube_data(
         df: pandas.DataFrame,
         FLAGS,
-        showavg="all",
-        showdeviations="all",
+        show_avg="all",
+        show_deviations="all",
         deviation_coefficient=1,
-        showtrends="updown",
+        show_trends="updown",
 
 ) -> Tuple[pandas.DataFrame, List]:
     print("Sorting through data in cube.")
@@ -22,12 +22,12 @@ def sort_cube_data(
     df_sorted = df
     df_sorted.insert(loc=0, column='flag', value='base')
 
-    if showavg != 'none':
-        df_sorted = sort_average(df, showavg)
-    if showdeviations != 'none':
-        df_sorted = sort_deviations(df, showdeviations, coefficient=deviation_coefficient)
-    if showtrends != 'none':
-        segments = sort_trends(df, showtrends)
+    if show_avg != 'none':
+        df_sorted = sort_average(df, show_avg)
+    if show_deviations != 'none':
+        df_sorted = sort_deviations(df, show_deviations, coefficient=deviation_coefficient)
+    if show_trends != 'none':
+        segments = sort_trends(df)
     else:
         df_sorted = df
 
@@ -36,28 +36,28 @@ def sort_cube_data(
 
 # Helper methods
 ########################################################################################################################
-def sort_average(df, showavg) -> pandas.DataFrame:
+def sort_average(df, show_avg) -> pandas.DataFrame:
     avg = get_avg(df)
-    if showavg != 'below':
+    if show_avg != 'below':
         df.loc[(df['value'] > avg), 'flag'] = 'above_avg'
-    if showavg != 'above':
+    if show_avg != 'above':
         df.loc[(df['value'] < avg), 'flag'] = 'below_avg'
 
     return df
 
 
-def sort_deviations(df, showdeviations, coefficient) -> pandas.DataFrame:
+def sort_deviations(df, show_deviations, coefficient) -> pandas.DataFrame:
     std = np.std(df['value'])
     avg = get_avg(df)
-    if showdeviations != 'below':
+    if show_deviations != 'below':
         df.loc[(df['value'] - (std * coefficient) > avg), 'flag'] = 'deviation_above'
-    if showdeviations != 'above':
+    if show_deviations != 'above':
         df.loc[(df['value'] - (-(std * coefficient)) < avg), 'flag'] = 'deviation_below'
 
     return df
 
 
-def sort_trends(df, showtrends) -> List:
+def sort_trends(df) -> List:
     min_change = 10
     curr_changes = 0
     last_sign = 1
