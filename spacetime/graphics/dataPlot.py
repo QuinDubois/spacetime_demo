@@ -59,6 +59,7 @@ def plot_cube(
 
     df_plot = organize_dataframe(cube, plot_type, variable, summary)
 
+    fig = go.Figure
     if plot_type == 'space':
         print("Plotting Space")
         fig = plot_spatial(cube, df_plot)
@@ -130,7 +131,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
         x=df_plot['time'],
         y=df_plot['value'],
         mode='lines',
-        line_color=FLAGS['base'][1],
+        line_color=dict(FLAGS['base'][1]),
         showlegend=False,
     ))  # Base line plot
 
@@ -228,6 +229,7 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
 
     print("Filtering NoData")
     df_plot = df_plot.where(df_plot != cube.get_nodata_value())
+    summ_df = pd.DataFrame
 
     if plot_type != 'space':
         print("GroupingBy summary")
