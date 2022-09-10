@@ -66,14 +66,14 @@ ds = make_cube(data = trimmed, fileName = "test.nc4", organizeFiles = "filestova
 # # here we extract aprils between '2000-02-29' and '2000-04-30'
 # y = select_time(cube=x, range=['2000-02-29', '2000-04-30'], scale = "month", element=4)
 #
-# # cube smasher does mathmatical/function operations on a cube or cubes (times 5)
+# # cube smasher does mathematical/function operations on a cube or cubes (times 5)
 # answer = cube_smasher(eq = "a * c", a = y, c = 5, parentCube = y)
 #
 # # plot the cube and output the data set in dataframe format that made the plot
 # plot_cube_old(cube=ds, type="time_series", summary = "mean", showPlot = True)
 plot_cube(
     cube=ds,
-    plot_type='control',
+    plot_type='histogram',
     summary='max',
     show_plot=True,
 )

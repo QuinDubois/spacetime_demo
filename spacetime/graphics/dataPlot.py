@@ -52,8 +52,9 @@ def plot_cube(
         summary: str = "mean",
         show_avg: str = "all",
         show_deviations: str = "all",
-        deviation_coefficient=1,
+        deviation_coefficient: int = 1,
         show_trends: str = "updown",
+        histo_type: str = "value",
         show_plot: bool = True,
 ) -> None:
 
@@ -71,6 +72,10 @@ def plot_cube(
     if plot_type == 'control':
         print("Plotting Control")
         fig = plot_control(df_plot, show_avg, show_deviations, deviation_coefficient, show_trends)
+
+    if plot_type == 'histogram':
+        print("Plotting Histogram")
+        fig = plot_histogram(df_plot, histo_type)
 
     if show_plot:
         fig.show()
@@ -131,7 +136,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
         x=df_plot['time'],
         y=df_plot['value'],
         mode='lines',
-        line_color=dict(FLAGS['base'][1]),
+        line=dict(color=FLAGS['base'][1]),
         showlegend=False,
     ))  # Base line plot
 
@@ -208,6 +213,34 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
     return fig
 
 
+# Plot a Histogram of the chart data
+def plot_histogram(df_plot, histo_type) -> go.Figure:
+    fig = go.Figure()
+
+    # We like having the distribution rug plot on the chart, but it's only easily done with plotly_express
+    fig = px.histogram(df_plot, x='value', marginal='rug', color='lat')
+
+    # I would like to have a couple ways to make Histograms, based on the distribution of values numerically,
+    #   as well as the distribution of values geographically. Have to figure out how to enable the distribution chart
+    #   without effectively just writing out two histograms if I don't have to.
+    #
+    # if histo_type == 'value':
+    #     for variable in pd.unique(df_plot['variables']):
+    #         fig.add_trace(
+    #             go.Histogram(x=df_plot['value'].loc[df_plot['variables'] == variable], name=("variable: " + variable))
+    #         )
+    #
+    #     fig.update_layout(barmode='stack')
+    #
+    # if histo_type == 'geographic':
+
+    # TODO: gonna have to fix aggregation functions in order to solve how to categorize the data geographically.
+    #       This is easy enough to do for Min, Max, and Median, which all look for existing values, but for Mean it may
+    #       become complicated.
+
+    return fig
+
+
 # Helper methods
 ########################################################################################################################
 # Process Cube data for chart plotting
@@ -239,9 +272,11 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
             if summary == "median":
                 summ_df = df_plot.groupby(['time', "variables"]).median().reset_index()
             if summary == "min":
-                summ_df = df_plot.groupby(['time', "variables"]).min().reset_index()
+                summ_df = df_plot.groupby(['time', 'variables']).apply(lambda x: x[x['value'] == x['value'].min()])
+                # summ_df = df_plot.groupby(['time', "variables"]).min().reset_index()
             if summary == "max":
-                summ_df = df_plot.groupby(['time', "variables"]).max().reset_index()
+                summ_df = df_plot.groupby(['time', 'variables']).apply(lambda x: x[x['value'] == x['value'].max()])
+                # summ_df = df_plot.groupby(['time', "variables"]).max().reset_index()
         else:
             if summary == "mean":
                 summ_df = df_plot.groupby('time').mean().reset_index()
