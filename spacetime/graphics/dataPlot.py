@@ -218,7 +218,7 @@ def plot_histogram(df_plot, histo_type) -> go.Figure:
     fig = go.Figure()
 
     # We like having the distribution rug plot on the chart, but it's only easily done with plotly_express
-    fig = px.histogram(df_plot, x='value', marginal='rug', color='lat')
+    fig = px.histogram(df_plot, x='value', marginal='rug', color='variables')
 
     # I would like to have a couple ways to make Histograms, based on the distribution of values numerically,
     #   as well as the distribution of values geographically. Have to figure out how to enable the distribution chart
@@ -272,20 +272,26 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
             if summary == "median":
                 summ_df = df_plot.groupby(['time', "variables"]).median().reset_index()
             if summary == "min":
-                summ_df = df_plot.groupby(['time', 'variables']).apply(lambda x: x[x['value'] == x['value'].min()])
                 # summ_df = df_plot.groupby(['time', "variables"]).min().reset_index()
+                idx = df_plot.groupby(['time', 'variables'])['value'].idxmin()
+                summ_df = df_plot.loc[idx, ]
             if summary == "max":
-                summ_df = df_plot.groupby(['time', 'variables']).apply(lambda x: x[x['value'] == x['value'].max()])
                 # summ_df = df_plot.groupby(['time', "variables"]).max().reset_index()
+                idx = df_plot.groupby(['time', 'variables'])['value'].idxmax()
+                summ_df = df_plot.loc[idx, ]
         else:
             if summary == "mean":
                 summ_df = df_plot.groupby('time').mean().reset_index()
             if summary == "median":
                 summ_df = df_plot.groupby('time').median().reset_index()
             if summary == "min":
-                summ_df = df_plot.groupby('time').min().reset_index()
+                # summ_df = df_plot.groupby('time').min().reset_index()
+                idx = df_plot.groupby(['time'])['value'].idxmin()
+                summ_df = df_plot.loc[idx, ]
             if summary == "max":
-                summ_df = df_plot.groupby('time').max().reset_index()
+                # summ_df = df_plot.groupby('time').max().reset_index()
+                idx = df_plot.groupby(['time'])['value'].idxmax()
+                summ_df = df_plot.loc[idx, ]
     else:
         summ_df = df_plot
 

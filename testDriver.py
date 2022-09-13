@@ -73,8 +73,8 @@ ds = make_cube(data = trimmed, fileName = "test.nc4", organizeFiles = "filestova
 # plot_cube_old(cube=ds, type="time_series", summary = "mean", showPlot = True)
 plot_cube(
     cube=ds,
-    plot_type='histogram',
-    summary='max',
+    plot_type='timeseries',
+    summary='median',
     show_plot=True,
 )
 
