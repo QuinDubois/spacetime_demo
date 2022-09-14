@@ -55,6 +55,7 @@ def plot_cube(
         deviation_coefficient: int = 1,
         show_trends: str = "updown",
         histo_type: str = "value",
+        bin_size: Union[int, float] = 10,
         show_plot: bool = True,
 ) -> None:
 
@@ -75,7 +76,7 @@ def plot_cube(
 
     if plot_type == 'histogram':
         print("Plotting Histogram")
-        fig = plot_histogram(df_plot, histo_type)
+        fig = plot_histogram(df_plot, histo_type, bin_size)
 
     if show_plot:
         fig.show()
@@ -214,29 +215,35 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 
 
 # Plot a Histogram of the chart data
-def plot_histogram(df_plot, histo_type) -> go.Figure:
+def plot_histogram(df_plot, histo_type, bin_size) -> go.Figure:
     fig = go.Figure()
 
     # We like having the distribution rug plot on the chart, but it's only easily done with plotly_express
-    fig = px.histogram(df_plot, x='value', marginal='rug', color='variables')
+    # fig = px.histogram(df_plot, x='value', marginal='rug', color='variables')
 
     # I would like to have a couple ways to make Histograms, based on the distribution of values numerically,
     #   as well as the distribution of values geographically. Have to figure out how to enable the distribution chart
     #   without effectively just writing out two histograms if I don't have to.
     #
-    # if histo_type == 'value':
-    #     for variable in pd.unique(df_plot['variables']):
-    #         fig.add_trace(
-    #             go.Histogram(x=df_plot['value'].loc[df_plot['variables'] == variable], name=("variable: " + variable))
-    #         )
-    #
-    #     fig.update_layout(barmode='stack')
-    #
-    # if histo_type == 'geographic':
+    if histo_type == 'value':
+        for variable in pd.unique(df_plot['variables']):
+            fig.add_trace(
+                go.Histogram(x=df_plot['value'].loc[df_plot['variables'] == variable], name=("variable: " + variable))
+            )
 
-    # TODO: gonna have to fix aggregation functions in order to solve how to categorize the data geographically.
-    #       This is easy enough to do for Min, Max, and Median, which all look for existing values, but for Mean it may
-    #       become complicated.
+        fig.update_layout(barmode='stack')
+
+    if histo_type == 'geographic':
+        bins = make_bins(bin_size, bin_min=-90.0, bin_max=90.0)
+        df_plot['bins'] = pd.cut(x=df_plot['lat'], bins=bins)
+        print(pd.unique(df_plot['bins']))
+
+        for bin in pd.unique(df_plot['bins']):
+            fig.add_trace(
+                go.Histogram(x=df_plot['value'].loc[df_plot['bins'] == bin])
+            )
+
+        fig.update_layout(barmode='stack')
 
     return fig
 
@@ -251,17 +258,17 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
     if shape_val == 4:
         print("Filtering Variable")
         if plot_type == "space":
-            if variable == None:
-                df_plot = df[df['variables'] == df['variables'][0]]
+            if variable is None:
+                df_temp = df[df['variables'] == df['variables'][0]]
             else:
-                df_plot = df[df['variables'] == variable]
+                df_temp = df[df['variables'] == variable]
         else:
-            df_plot = df
+            df_temp = df
     else:
-        df_plot = df
+        df_temp = df
 
     print("Filtering NoData")
-    df_plot = df_plot.where(df_plot != cube.get_nodata_value())
+    df_plot = df_temp.where(df_temp != cube.get_nodata_value())
     summ_df = pd.DataFrame
 
     if plot_type != 'space':
@@ -323,3 +330,18 @@ def update_fig_layout(fig) -> go.Figure:
     )
 
     return fig
+
+
+# Make bin list
+def make_bins(bin_size, bin_min, bin_max) -> list:
+
+    bins = []
+    bin_val = bin_min
+    while bin_val <= bin_max:
+        bins.append(bin_val)
+        bin_val += bin_size
+
+    if bin_val > bin_max and bin_max not in bins:
+        bins.append(bin_max)
+
+    return bins
