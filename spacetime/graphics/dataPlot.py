@@ -218,13 +218,6 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 def plot_histogram(df_plot, histo_type, bin_size) -> go.Figure:
     fig = go.Figure()
 
-    # We like having the distribution rug plot on the chart, but it's only easily done with plotly_express
-    # fig = px.histogram(df_plot, x='value', marginal='rug', color='variables')
-
-    # I would like to have a couple ways to make Histograms, based on the distribution of values numerically,
-    #   as well as the distribution of values geographically. Have to figure out how to enable the distribution chart
-    #   without effectively just writing out two histograms if I don't have to.
-    #
     if histo_type == 'value':
         for variable in pd.unique(df_plot['variables']):
             fig.add_trace(
@@ -234,16 +227,20 @@ def plot_histogram(df_plot, histo_type, bin_size) -> go.Figure:
         fig.update_layout(barmode='stack')
 
     if histo_type == 'geographic':
-        bins = make_bins(bin_size, bin_min=-90.0, bin_max=90.0)
-        df_plot['bins'] = pd.cut(x=df_plot['lat'], bins=bins)
+        bins, bins_labels = make_bins(bin_size, bin_min=-90.0, bin_max=90.0)
+        df_plot['bins'] = pd.cut(x=df_plot['lat'], bins=bins, labels=bins_labels)
         print(pd.unique(df_plot['bins']))
 
         for bin in pd.unique(df_plot['bins']):
             fig.add_trace(
-                go.Histogram(x=df_plot['value'].loc[df_plot['bins'] == bin])
+                go.Histogram(x=df_plot['value'].loc[df_plot['bins'] == bin], name=f"latitude: {bin}")
             )
 
         fig.update_layout(barmode='stack')
+
+        print(df_plot.head())
+
+    # TODO: Add ability to show multiple plots when dataset has multiple elements.
 
     return fig
 
@@ -336,12 +333,18 @@ def update_fig_layout(fig) -> go.Figure:
 def make_bins(bin_size, bin_min, bin_max) -> list:
 
     bins = []
+    bins_labels = []
     bin_val = bin_min
+    previous_bin = bin_min
     while bin_val <= bin_max:
         bins.append(bin_val)
+        if bin_val > bin_min:
+            bins_labels.append(f"{previous_bin+0.1} to {bin_val}")
+        previous_bin = bin_val
         bin_val += bin_size
 
     if bin_val > bin_max and bin_max not in bins:
         bins.append(bin_max)
+        bins_labels.append(f"{previous_bin+0.1} to {bin_max}")
 
-    return bins
+    return bins, bins_labels
