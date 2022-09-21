@@ -2,11 +2,13 @@ import numpy as np
 import pandas as pd
 import plotly_express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from typing import Optional, Union
 
 import statsmodels.api as sm
 import datetime
+import math
 
 from spacetime.graphics.controlCubeSorter import sort_cube_data
 from spacetime.operations.cubeToDataframe import cube_to_dataframe
@@ -218,10 +220,36 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 def plot_histogram(df_plot, histo_type, bin_size) -> go.Figure:
     fig = go.Figure()
 
+    variables = list(pd.unique(df_plot['variables']))
+    subplot_count = len(variables)
+    subplot_col = 2
+    subplot_row = math.ceil(subplot_count / 2)
+    variable_count = 0
+
+    if histo_type == 'subplots':
+        fig = make_subplots(rows=subplot_row, cols=subplot_col)
+        for col in range(0, subplot_col):
+            for row in range(0, subplot_row):
+                if variable_count <= len(variables):
+                    fig.add_trace(
+                        go.Histogram(
+                            x=df_plot['value'].loc[df_plot['variables'] == variables[variable_count]],
+                            name=f"variable: {variables[variable_count]}"
+                        ),
+                        row=row+1,
+                        col=col+1
+                    )
+
+                    variable_count += 1
+
     if histo_type == 'value':
         for variable in pd.unique(df_plot['variables']):
+
             fig.add_trace(
-                go.Histogram(x=df_plot['value'].loc[df_plot['variables'] == variable], name=("variable: " + variable))
+                go.Histogram(
+                    x=df_plot['value'].loc[df_plot['variables'] == variable],
+                    name=("variable: " + variable),
+                ),
             )
 
         fig.update_layout(barmode='stack')
