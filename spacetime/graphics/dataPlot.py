@@ -4,7 +4,7 @@ import plotly_express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 import statsmodels.api as sm
 import datetime
@@ -50,6 +50,7 @@ FLAGS = {
 def plot_cube(
         cube,
         plot_type: str = "timeseries",
+        subplots: str = "no",
         variable: Optional[Union[str, int]] = None,
         summary: str = "mean",
         show_avg: str = "all",
@@ -57,6 +58,7 @@ def plot_cube(
         deviation_coefficient: int = 1,
         show_trends: str = "updown",
         histo_type: str = "value",
+        histo_geography: str = 'latlon',
         bin_size: Union[int, float] = 10,
         show_plot: bool = True,
 ) -> None:
@@ -78,7 +80,7 @@ def plot_cube(
 
     if plot_type == 'histogram':
         print("Plotting Histogram")
-        fig = plot_histogram(df_plot, histo_type, bin_size)
+        fig = plot_histogram(df_plot, histo_type, histo_geography, subplots, bin_size)
 
     if show_plot:
         fig.show()
@@ -217,58 +219,75 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 
 
 # Plot a Histogram of the chart data
-def plot_histogram(df_plot, histo_type, bin_size) -> go.Figure:
+def plot_histogram(df_plot, histo_type, histo_geography, subplots, bin_size) -> go.Figure:
     fig = go.Figure()
 
     variables = list(pd.unique(df_plot['variables']))
-    subplot_count = len(variables)
-    subplot_col = 2
-    subplot_row = math.ceil(subplot_count / 2)
-    variable_count = 0
-
-    if histo_type == 'subplots':
-        fig = make_subplots(rows=subplot_row, cols=subplot_col)
-        for col in range(0, subplot_col):
-            for row in range(0, subplot_row):
-                if variable_count <= len(variables):
-                    fig.add_trace(
-                        go.Histogram(
-                            x=df_plot['value'].loc[df_plot['variables'] == variables[variable_count]],
-                            name=f"variable: {variables[variable_count]}"
-                        ),
-                        row=row+1,
-                        col=col+1
-                    )
-
-                    variable_count += 1
-
-    if histo_type == 'value':
-        for variable in pd.unique(df_plot['variables']):
-
-            fig.add_trace(
-                go.Histogram(
-                    x=df_plot['value'].loc[df_plot['variables'] == variable],
-                    name=("variable: " + variable),
-                ),
-            )
-
-        fig.update_layout(barmode='stack')
 
     if histo_type == 'geographic':
         bins, bins_labels = make_bins(bin_size, bin_min=-90.0, bin_max=90.0)
         df_plot['bins'] = pd.cut(x=df_plot['lat'], bins=bins, labels=bins_labels)
-        print(pd.unique(df_plot['bins']))
 
-        for bin in pd.unique(df_plot['bins']):
-            fig.add_trace(
-                go.Histogram(x=df_plot['value'].loc[df_plot['bins'] == bin], name=f"latitude: {bin}")
-            )
+    if subplots == 'yes':
+        subplot_count = len(variables)
+        subplot_col = 2
+        subplot_row = math.ceil(subplot_count / 2)
+        variable_count = 0
+        fig = make_subplots(rows=subplot_row, cols=subplot_col)
 
-        fig.update_layout(barmode='stack')
+        for col in range(0, subplot_col):
+            for row in range(0, subplot_row):
+                if variable_count <= len(variables):
+                    if histo_type == 'value':
+                        fig.add_trace(
+                            go.Histogram(
+                                x=df_plot['value'].loc[df_plot['variables'] == variables[variable_count]],
+                                name=f"variable: {variables[variable_count]}"
+                            ),
+                            row=row+1,
+                            col=col+1
+                        )
+                    elif histo_type == 'geographic':
+                        print(f"{row+1}, {col+1}")
+                        for bins in pd.unique(df_plot['bins']):
+                            fig.add_trace(
+                                go.Histogram(
+                                    x=df_plot['value'].loc[(df_plot['bins'] == bins) & (df_plot['variables'] == variables[variable_count])],
+                                    name=f"variable: {variables[variable_count]} latitude: {bins}"
+                                ),
+                                row=row+1,
+                                col=col+1
+                            )
 
-        print(df_plot.head())
+                        fig.update_layout(barmode='stack')
 
-    # TODO: Add ability to show multiple plots when dataset has multiple elements.
+                    variable_count += 1
+
+    elif subplots == 'no':
+        if histo_type == 'value':
+            for variable in pd.unique(df_plot['variables']):
+                fig.add_trace(
+                    go.Histogram(
+                        x=df_plot['value'].loc[df_plot['variables'] == variable],
+                        name=("variable: " + variable),
+                    ),
+                )
+
+            fig.update_layout(barmode='stack')
+        elif histo_type == 'geographic':
+
+            for bins in pd.unique(df_plot['bins']):
+                fig.add_trace(
+                    go.Histogram(
+                        x=df_plot['value'].loc[df_plot['bins'] == bins],
+                        name=f"latitude: {bins}"
+                    ),
+                )
+
+            fig.update_layout(barmode='stack')
+
+    else:
+        pass
 
     return fig
 
@@ -332,6 +351,13 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
     return summ_df
 
 
+# Create Histogram Trace
+def make_histogram(df, fig, histo_type, bin_size):
+
+
+    return fig
+
+
 # Add trace
 def add_markers(df, fig, marker_name, marker_color):
     fig.add_trace(go.Scatter(
@@ -357,8 +383,8 @@ def update_fig_layout(fig) -> go.Figure:
     return fig
 
 
-# Make bin list
-def make_bins(bin_size, bin_min, bin_max) -> list:
+# Make bin list for histogram
+def make_bins(bin_size, bin_min, bin_max) -> Tuple[list, list]:
 
     bins = []
     bins_labels = []

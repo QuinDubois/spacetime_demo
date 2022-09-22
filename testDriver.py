@@ -75,7 +75,8 @@ plot_cube(
     cube=ds,
     plot_type='histogram',
     summary='max',
-    histo_type='subplots',
+    subplots='no',
+    histo_type='geographic',
     bin_size=0.5,
     show_plot=True,
 )
