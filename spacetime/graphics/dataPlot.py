@@ -58,7 +58,7 @@ def plot_cube(
         deviation_coefficient: int = 1,
         show_trends: str = "updown",
         histo_type: str = "value",
-        histo_geography: str = 'latlon',
+        histo_latlon: str = 'lat',
         bin_size: Union[int, float] = 10,
         show_plot: bool = True,
 ) -> None:
@@ -80,7 +80,7 @@ def plot_cube(
 
     if plot_type == 'histogram':
         print("Plotting Histogram")
-        fig = plot_histogram(df_plot, histo_type, histo_geography, subplots, bin_size)
+        fig = plot_histogram(df_plot, histo_type, histo_latlon, subplots, bin_size)
 
     if show_plot:
         fig.show()
@@ -219,14 +219,17 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 
 
 # Plot a Histogram of the chart data
-def plot_histogram(df_plot, histo_type, histo_geography, subplots, bin_size) -> go.Figure:
+def plot_histogram(df_plot, histo_type, histo_latlon, subplots, bin_size) -> go.Figure:
     fig = go.Figure()
 
     variables = list(pd.unique(df_plot['variables']))
 
     if histo_type == 'geographic':
         bins, bins_labels = make_bins(bin_size, bin_min=-90.0, bin_max=90.0)
-        df_plot['bins'] = pd.cut(x=df_plot['lat'], bins=bins, labels=bins_labels)
+        if histo_latlon == 'lat':
+            df_plot['bins'] = pd.cut(x=df_plot['lat'], bins=bins, labels=bins_labels)
+        elif histo_latlon == 'lon':
+            df_plot['bins'] = pd.cut(x=df_plot['lon'], bins=bins, labels=bins_labels)
 
     if subplots == 'yes':
         subplot_count = len(variables)
@@ -253,7 +256,7 @@ def plot_histogram(df_plot, histo_type, histo_geography, subplots, bin_size) -> 
                             fig.add_trace(
                                 go.Histogram(
                                     x=df_plot['value'].loc[(df_plot['bins'] == bins) & (df_plot['variables'] == variables[variable_count])],
-                                    name=f"variable: {variables[variable_count]} latitude: {bins}"
+                                    name=f"variable: {variables[variable_count]} {histo_latlon}: {bins}"
                                 ),
                                 row=row+1,
                                 col=col+1
@@ -280,7 +283,7 @@ def plot_histogram(df_plot, histo_type, histo_geography, subplots, bin_size) -> 
                 fig.add_trace(
                     go.Histogram(
                         x=df_plot['value'].loc[df_plot['bins'] == bins],
-                        name=f"latitude: {bins}"
+                        name=f"{histo_latlon}: {bins}"
                     ),
                 )
 

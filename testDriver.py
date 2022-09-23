@@ -77,6 +77,7 @@ plot_cube(
     summary='max',
     subplots='no',
     histo_type='geographic',
+    histo_latlon='lon',
     bin_size=0.5,
     show_plot=True,
 )
