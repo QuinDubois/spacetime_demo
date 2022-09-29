@@ -74,11 +74,11 @@ ds = make_cube(data = trimmed, fileName = "test.nc4", organizeFiles = "filestova
 plot_cube(
     cube=ds,
     plot_type='histogram',
+    variable=None,
     summary='max',
-    subplots='no',
-    histo_type='geographic',
-    histo_latlon='lon',
-    bin_size=0.5,
+    histo_type='animated',
+    histo_highlight='variable',
+    bin_size=0.1,
     show_plot=True,
 )
 

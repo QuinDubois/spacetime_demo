@@ -50,7 +50,6 @@ FLAGS = {
 def plot_cube(
         cube,
         plot_type: str = "timeseries",
-        subplots: str = "no",
         variable: Optional[Union[str, int]] = None,
         summary: str = "mean",
         show_avg: str = "all",
@@ -58,7 +57,7 @@ def plot_cube(
         deviation_coefficient: int = 1,
         show_trends: str = "updown",
         histo_type: str = "value",
-        histo_latlon: str = 'lat',
+        histo_highlight: str = 'variable',
         bin_size: Union[int, float] = 10,
         show_plot: bool = True,
 ) -> None:
@@ -80,7 +79,7 @@ def plot_cube(
 
     if plot_type == 'histogram':
         print("Plotting Histogram")
-        fig = plot_histogram(df_plot, histo_type, histo_latlon, subplots, bin_size)
+        fig = plot_histogram(df_plot, histo_type, histo_highlight, bin_size)
 
     if show_plot:
         fig.show()
@@ -219,19 +218,48 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 
 
 # Plot a Histogram of the chart data
-def plot_histogram(df_plot, histo_type, histo_latlon, subplots, bin_size) -> go.Figure:
+def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
     fig = go.Figure()
 
     variables = list(pd.unique(df_plot['variables']))
 
-    if histo_type == 'geographic':
+    variable_alias = ['var', 'variables', 'variable']
+    latitude_alias = ['lat', 'latitude']
+    longitude_alias = ['lon', 'long', 'longitude']
+
+    # Create splits in the data to highlight geographically.
+    if histo_highlight in latitude_alias or histo_highlight in longitude_alias:
         bins, bins_labels = make_bins(bin_size, bin_min=-90.0, bin_max=90.0)
-        if histo_latlon == 'lat':
+        if histo_highlight in latitude_alias:
             df_plot['bins'] = pd.cut(x=df_plot['lat'], bins=bins, labels=bins_labels)
-        elif histo_latlon == 'lon':
+        elif histo_highlight in longitude_alias:
             df_plot['bins'] = pd.cut(x=df_plot['lon'], bins=bins, labels=bins_labels)
 
-    if subplots == 'yes':
+    # Singular Histogram chart output
+    if histo_type == 'single':
+        if histo_highlight in variable_alias:
+            for variable in pd.unique(df_plot['variables']):
+                fig.add_trace(
+                    go.Histogram(
+                        x=df_plot['value'].loc[df_plot['variables'] == variable],
+                        name=("variable: " + variable),
+                    ),
+                )
+            fig.update_layout(barmode='stack')
+
+        elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
+            for bins in pd.unique(df_plot['bins']):
+                fig.add_trace(
+                    go.Histogram(
+                        x=df_plot['value'].loc[df_plot['bins'] == bins],
+                        name=f"{histo_highlight}: {bins}"
+                    ),
+                )
+
+            fig.update_layout(barmode='stack')
+
+    # Histogram Chart Output with subplots.
+    elif histo_type == 'multi':
         subplot_count = len(variables)
         subplot_col = 2
         subplot_row = math.ceil(subplot_count / 2)
@@ -241,56 +269,59 @@ def plot_histogram(df_plot, histo_type, histo_latlon, subplots, bin_size) -> go.
         for col in range(0, subplot_col):
             for row in range(0, subplot_row):
                 if variable_count <= len(variables):
-                    if histo_type == 'value':
-                        fig.add_trace(
-                            go.Histogram(
-                                x=df_plot['value'].loc[df_plot['variables'] == variables[variable_count]],
-                                name=f"variable: {variables[variable_count]}"
-                            ),
-                            row=row+1,
-                            col=col+1
-                        )
-                    elif histo_type == 'geographic':
-                        print(f"{row+1}, {col+1}")
+                    if histo_highlight in variable_alias:
+                        for variable in pd.unique(df_plot['variables']):
+                            fig.add_trace(
+                                go.Histogram(
+                                    x=df_plot['value'].loc[df_plot['variables'] == variable],
+                                    name=("variable: " + variable),
+                                ),
+                                row=row+1,
+                                col=col+1
+                            )
+                        fig.update_layout(barmode='stack')
+
+                    elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
                         for bins in pd.unique(df_plot['bins']):
                             fig.add_trace(
                                 go.Histogram(
-                                    x=df_plot['value'].loc[(df_plot['bins'] == bins) & (df_plot['variables'] == variables[variable_count])],
-                                    name=f"variable: {variables[variable_count]} {histo_latlon}: {bins}"
+                                    x=df_plot['value'].loc[
+                                        (df_plot['bins'] == bins) & (df_plot['variables'] == variables[variable_count])
+                                    ],
+                                    name=f"variable: {variables[variable_count]} {histo_highlight}: {bins}"
                                 ),
                                 row=row+1,
                                 col=col+1
                             )
 
                         fig.update_layout(barmode='stack')
-
+                    else:
+                        raise ValueError(f"{histo_highlight} is not a valid highlight.")
                     variable_count += 1
 
-    elif subplots == 'no':
-        if histo_type == 'value':
-            for variable in pd.unique(df_plot['variables']):
-                fig.add_trace(
-                    go.Histogram(
-                        x=df_plot['value'].loc[df_plot['variables'] == variable],
-                        name=("variable: " + variable),
-                    ),
-                )
+    # Animated Histogram Chart by Year.
+    elif histo_type == 'animated':
+        fig_frames = []
+        for year in pd.unique(df_plot['year']):
+            fig_frames.append(go.Frame(data=go.Histogram(x=df_plot['value'].loc[df_plot['year'] == year])))
 
-            fig.update_layout(barmode='stack')
-        elif histo_type == 'geographic':
-
-            for bins in pd.unique(df_plot['bins']):
-                fig.add_trace(
-                    go.Histogram(
-                        x=df_plot['value'].loc[df_plot['bins'] == bins],
-                        name=f"{histo_latlon}: {bins}"
-                    ),
-                )
-
-            fig.update_layout(barmode='stack')
+        fig = go.Figure(
+            data=[go.Histogram(x=df_plot['value'])],
+            layout=go.Layout(
+                xaxis=dict(range=[df_plot['value'].min(), df_plot['value'].max()], autorange=False),
+                yaxis=dict(range=[0, 25], autorange=False),
+                title="Histogram animated",
+                updatemenus=[dict(
+                    type="buttons",
+                    buttons=[dict(label="Play",
+                                  method="animate",
+                                  args=[None])])]
+            ),
+            frames=fig_frames
+        )
 
     else:
-        pass
+        raise ValueError(f"{histo_type} is not a valid histogram type.")
 
     return fig
 
@@ -350,19 +381,29 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
         summ_df = df_plot
 
     summ_df.insert(loc=0, column='timeChar', value=summ_df['time'].astype(str))
+    summ_df.insert(loc=0, column='year', value=pd.DatetimeIndex(summ_df['time']).year)
+
+    print(summ_df.head())
 
     return summ_df
 
 
 # Create Histogram Trace
-def make_histogram(df, fig, histo_type, bin_size):
+def make_histogram(df, fig, histo_type, row, col, bins):
 
+    # TODO: Refactor Histogram code to make adding traces happen here.
+
+    # if histo_type == 'single':
+    #
+    #
+    # elif histo_type == 'multi':
+    #
 
     return fig
 
 
 # Add trace
-def add_markers(df, fig, marker_name, marker_color):
+def add_markers(df, fig, marker_name, marker_color) -> go.Figure:
     fig.add_trace(go.Scatter(
         x=df['time'],
         y=df['value'],
