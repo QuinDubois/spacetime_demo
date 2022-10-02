@@ -302,20 +302,73 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
     # Animated Histogram Chart by Year.
     elif histo_type == 'animated':
         fig_frames = []
+        max_bin = 0
+
+        sliders_dict = {
+            "active": 0,
+            "yanchor": "top",
+            "xanchor": "left",
+            "currentvalue": {
+                "font": {"size": 20},
+                "prefix": "Year:",
+                "visible": True,
+                "xanchor": "right"
+            },
+            "transition": {"duration": 300, "easing": "cubic-in-out"},
+            "pad": {"b": 10, "t": 50},
+            "len": 0.9,
+            "x": 0.1,
+            "y": 0,
+            "steps": []
+        }
+
+        # TODO: Slider appears but changing the slider doesn't redraw the chart data. Suspect because the slider markers
+        #  aren't properly associated with the frames.
+
         for year in pd.unique(df_plot['year']):
-            fig_frames.append(go.Frame(data=go.Histogram(x=df_plot['value'].loc[df_plot['year'] == year])))
+            frame = go.Frame(data=go.Histogram(x=df_plot['value'].loc[df_plot['year'] == year]), name=str(year))
+
+            if max_bin < frame['data'][0]['x'].shape[0]:
+                max_bin = frame['data'][0]['x'].shape[0]
+
+            fig_frames.append(frame)
+
+            slider_step = {"args": [
+                [year],
+                {"frame": {"duration": 300, "redraw": True},
+                 "mode": "immediate",
+                 "transition": {"duration": 300}}
+            ],
+                "label": str(year),
+                "method": "animate"}
+            sliders_dict["steps"].append(slider_step)
 
         fig = go.Figure(
             data=[go.Histogram(x=df_plot['value'])],
             layout=go.Layout(
                 xaxis=dict(range=[df_plot['value'].min(), df_plot['value'].max()], autorange=False),
-                yaxis=dict(range=[0, 25], autorange=False),
+                yaxis=dict(range=[0, max_bin], autorange=False),
                 title="Histogram animated",
                 updatemenus=[dict(
                     type="buttons",
                     buttons=[dict(label="Play",
                                   method="animate",
-                                  args=[None])])]
+                                  args=[None, {"frame": {"duration": 500, "redraw": True},
+                                               "fromcurrent": True,
+                                               "transition": {"duration": 300,
+                                                              "easing": "quadratic-in-out"}}]
+                                  ),
+                             dict(
+                                 label="Pause",
+                                 method="animate",
+                                 args=[None, {"frame": {"duration": 0, "redraw": True},
+                                              "mode": "immediate",
+                                              "transition": {"duration": 0}}]
+                             )],
+                    showactive=False,
+
+                )],
+                sliders=[sliders_dict]
             ),
             frames=fig_frames
         )
