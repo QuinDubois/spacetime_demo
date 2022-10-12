@@ -307,19 +307,48 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
             "steps": []
         }
 
-        # TODO: Figure out highlighting data in the animation.
-        #  I'm researching how the data and frames parameters for graph objects work together.
-        #  Also add geographic highlighting.
-        #  A thought may be to rework the entire histogram code to be data-first
-        #  (and maybe even all the plotting functions)
-        #  the Animation in Plotly reference page uses a data-first approach in the graph_objects example,
-        #  which might condense some of the plotting code in general, but particularly the Histogram code.
+        # Making Frames
+        for year in years:
 
-        for year in pd.unique(df_plot['year']):
-            frame = go.Frame(data=go.Histogram(x=df_plot['value'].loc[df_plot['year'] == year]), name=str(year))
+            frame_data = []
 
-            if max_bin < frame['data'][0]['x'].shape[0]:
-                max_bin = frame['data'][0]['x'].shape[0]
+            if histo_highlight in variable_alias:
+                for variable in variables:
+                    data = {
+                        'type': 'histogram',
+                        'x': np.array(df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['variables'] == variable)]),
+                        'name': str(variable),
+                        'showlegend': True
+                    }
+                    frame_data.append(data)
+                    absolute_max_bin = len(data['x'])
+                    max_bin = max(max_bin, absolute_max_bin)
+
+            if histo_highlight in latitude_alias:
+                for bins in pd.unique(df_plot['bins']):
+                    data = {
+                        'type': 'histogram',
+                        'x': np.array(df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['bins'] == bins)]),
+                        'name': f"Latitude: {bins}",
+                        'showlegend': True
+                    }
+                    frame_data.append(data)
+                    absolute_max_bin = len(data['x'])
+                    max_bin = max(max_bin, absolute_max_bin)
+
+            if histo_highlight in longitude_alias:
+                for bins in pd.unique(df_plot['bins']):
+                    data = {
+                        'type': 'histogram',
+                        'x': np.array(df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['bins'] == bins)]),
+                        'name': f"Longitude: {bins}",
+                        'showlegend': True
+                    }
+                    frame_data.append(data)
+                    absolute_max_bin = len(data['x'])
+                    max_bin = max(max_bin, absolute_max_bin)
+
+            frame = go.Frame(data=frame_data, name=str(year))
 
             fig_frames.append(frame)
 
@@ -333,32 +362,40 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
                 "method": "animate"}
             sliders_dict["steps"].append(slider_step)
 
+        # Making the final Plot and Layout
         fig = go.Figure(
-            data=[go.Histogram(x=df_plot['value'])],
+            data=fig_frames[0]['data'],
             layout=go.Layout(
-                xaxis=dict(range=[df_plot['value'].min(), df_plot['value'].max()], autorange=False),
-                yaxis=dict(range=[0, max_bin], autorange=False),
+                xaxis=dict(
+                    range=[df_plot['value'].min(), df_plot['value'].max()],
+                    autorange=False
+                ),
+                yaxis=dict(
+                    range=[0, max_bin],
+                    autorange=False
+                ),
                 title="Histogram animated",
-                updatemenus=[dict(
-                    type="buttons",
-                    buttons=[dict(label="Play",
-                                  method="animate",
-                                  args=[None, {"frame": {"duration": 500, "redraw": True},
-                                               "fromcurrent": True,
-                                               "transition": {"duration": 300,
-                                                              "easing": "quadratic-in-out"}}]
-                                  ),
-                             dict(
-                                 label="Pause",
-                                 method="animate",
-                                 args=[None, {"frame": {"duration": 0, "redraw": True},
-                                              "mode": "immediate",
-                                              "transition": {"duration": 0}}]
-                             )],
-                    showactive=False,
-
-                )],
-                sliders=[sliders_dict]
+                updatemenus=[
+                    dict(
+                        type="buttons",
+                        buttons=[dict(label="Play",
+                                      method="animate",
+                                      args=[None, {"frame": {"duration": 500, "redraw": True},
+                                                   "fromcurrent": True,
+                                                   "transition": {"duration": 300}}]
+                                      ),
+                                 dict(
+                                     label="Pause",
+                                     method="animate",
+                                     args=[[None], {"frame": {"duration": 0, "redraw": True},
+                                                    "mode": "immediate",
+                                                    "transition": {"duration": 0}}]
+                                 )],
+                        showactive=False,
+                    )
+                ],
+                sliders=[sliders_dict],
+                barmode='stack'
             ),
             frames=fig_frames
         )

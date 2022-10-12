@@ -76,8 +76,8 @@ plot_cube(
     plot_type='histogram',
     variable=None,
     summary='max',
-    histo_type='multi',
-    histo_highlight='lat',
+    histo_type='animated',
+    histo_highlight='longitude',
     bin_size=0.1,
     show_plot=True,
 )

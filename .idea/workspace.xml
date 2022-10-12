@@ -123,6 +123,7 @@
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="fig_frames" />
+        <watch expression="frame" />
       </configuration>
     </watches-manager>
   </component>
