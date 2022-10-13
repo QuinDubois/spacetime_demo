@@ -81,6 +81,10 @@ def plot_cube(
         print("Plotting Histogram")
         fig = plot_histogram(df_plot, histo_type, histo_highlight, bin_size)
 
+    if plot_type == 'box':
+        print("Plotting Box")
+        fig = plot_box(df_plot, variable)
+
     if show_plot:
         fig.show()
 
@@ -402,6 +406,26 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
 
     else:
         raise ValueError(f"{histo_type} is not a valid histogram type.")
+
+    return fig
+
+
+# Make a box plot
+def plot_box(df, variable) -> go.Figure:
+    fig = go.Figure()
+
+    if variable == None:
+        var_opts = pd.unique(df['variables'])
+    else:
+        var_opts = variable
+
+    for var in var_opts:
+        fig.add_trace(go.Box(
+            x=df['variables'].loc[df['variables'] == var],
+            y=df['value'].loc[df['variables'] == var],
+            name=f"variable: {var}",
+            showlegend=True
+        ))
 
     return fig
 
