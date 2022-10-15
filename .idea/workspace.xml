@@ -5,8 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="66704c5d-d5f9-4218-a85e-776bde45d2b3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/spacetime/graphics/dataPlot.py" beforeDir="false" afterPath="$PROJECT_DIR$/spacetime/graphics/dataPlot.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spacetime/operations/cubeToDataframe.py" beforeDir="false" afterPath="$PROJECT_DIR$/spacetime/operations/cubeToDataframe.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,6 +53,10 @@
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\quind\GitHub\spacetime_demo\demoData\Other" />
       <recent name="C:\Users\quind\GitHub\spacetime_demo\demoData\Carya_ovata" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\quind\GitHub\spacetime_demo\demoData\Carya_ovata" />
+      <recent name="C:\Users\quind\GitHub\spacetime_demo\demoData" />
     </key>
   </component>
   <component name="RunManager">
