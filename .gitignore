@@ -9,8 +9,8 @@ readingFiles.Rmd
 scaling.Rmd
 scalingTime.Rmd
 demoData/India_cropped-area_1km_2016.tif
-demoData/Carya_ovata_sim_disc_1km.tif
-demoData/Carya_ovata_sim_disc_10km.tif
+demoData/Carya_ovata/Carya_ovata_sim_disc_1km.tif
+demoData/Carya_ovata/Carya_ovata_sim_disc_10km.tif
 demoData/2002.tif
 cubeOps.Rmd
 demoData/.DS_Store

@@ -461,11 +461,9 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
             if summary == "median":
                 summ_df = df_plot.groupby(['time', "variables"]).median().reset_index()
             if summary == "min":
-                # summ_df = df_plot.groupby(['time', "variables"]).min().reset_index()
                 idx = df_plot.groupby(['time', 'variables'])['value'].idxmin()
                 summ_df = df_plot.loc[idx, ]
             if summary == "max":
-                # summ_df = df_plot.groupby(['time', "variables"]).max().reset_index()
                 idx = df_plot.groupby(['time', 'variables'])['value'].idxmax()
                 summ_df = df_plot.loc[idx, ]
         else:
@@ -474,11 +472,9 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
             if summary == "median":
                 summ_df = df_plot.groupby('time').median().reset_index()
             if summary == "min":
-                # summ_df = df_plot.groupby('time').min().reset_index()
                 idx = df_plot.groupby(['time'])['value'].idxmin()
                 summ_df = df_plot.loc[idx, ]
             if summary == "max":
-                # summ_df = df_plot.groupby('time').max().reset_index()
                 idx = df_plot.groupby(['time'])['value'].idxmax()
                 summ_df = df_plot.loc[idx, ]
     else:
