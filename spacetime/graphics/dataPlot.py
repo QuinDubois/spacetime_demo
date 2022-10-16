@@ -57,9 +57,96 @@ def plot_cube(
         show_trends: str = "updown",
         histo_type: str = "value",
         histo_highlight: str = 'variable',
-        bin_size: Union[int, float] = 10,
+        discrete_latlong_size: Union[int, float] = 10,
+        bin_size: Union[int, float] = 100,
         show_plot: bool = True,
-) -> None:
+) -> go.Figure:
+
+    """
+    Parameter Definitions:
+
+        cube: <accepted types: cube object>
+                A cube object.
+
+        plot_type: <accepted types: string>
+                The type of plot to output.
+                Options:
+                    'space' - creates a choropleth heatmap
+                    'timeseries' - creates a line plot
+                    'control' - creates a configurable control chart plot
+                    'histogram' - creates a configurable histogram plot
+                    'box' - creates a box plot
+
+        variable: <accepted types: string, integer>
+                The variable name to filter the dataset by.
+
+        summary: <accepted types: string>
+                The aggregation function for the dataset.
+                Options:
+                    'min' - aggregates by the minimum value
+                    'max' - aggregates by the maximum value
+                    'median' - aggregates by the median value
+                    'mean' - aggregates by the mean value
+
+        show_avg: <accepted types: string>
+                For use with Control Charts, allows toggling of highlighting for average values.
+                Options:
+                    'above' - highlights markers above average
+                    'below' - highlights markers below average
+                    'all' - combines 'above' and 'below' options
+                    'none' - no average based highlighting
+
+        show_deviations: <accepted types: string>
+                For use with Control Charts, allows toggling of highlighting for standard deviation
+                values. Related: deviation_coefficient
+                Options:
+                    'above' - highlights markers in positive standard deviation
+                    'below' - highlights markers in negative standard deviation
+                    'all' - combines 'above' and 'below' options
+                    'none' - no deviation based highlighting
+
+        deviation_coefficient: <accepted types: integer>
+                For use with Control Charts, set how many standard deviations outside the data set
+                normal you want to count for show_deviations highlighting. Related: show_deviations
+
+        show_trends: <accepted types: string>
+                For use with Control Charts, allows toggling of trendlines.
+                Options:
+                    'all' - show all trendlines regardless of p-value
+                    'up' - show p-value significant trendlines for positive trends
+                    'down' - show p-value significant trendlines for negative trends
+                    'updown' - combines 'up' and 'down' options
+                    'none' - show no trendlines
+
+        histo_type: <accepted types: string>
+                For use with Histograms, determines histogram output type. Related: bin_size
+                Options:
+                    'single' - a single histogram chart
+                    'multi' - a histogram chart for each unique variable in the data set
+                    'animated' - a histogram chart that animates over the time series of the data set
+
+        histo_highlight: <accepted types: string>
+                For use with Histograms, determines additional highlighting for histogram charts.
+                Related: discrete_latlong_size
+                Options:
+                    'variable' - highlights bins based on which variable the value belongs to.
+                                    alias: 'var', 'variables'
+                    'latitude' - highlights bins based on the latitude degree range the value was measured in.
+                                    alias: 'lat'
+                    'longitude' - highlights bins based on the longitude degree range the value was measured in.
+                                    alias: 'lon', 'long'
+
+        discrete_latlong_size: <accepted types: integer, float>
+                For use with Histograms, determines the size in degrees of the distinctions for latitude and
+                longitude based highlighting. Related: histo_highlight
+
+        bin_size: <accepted types: integer, float>
+                For use with Histograms, determined the bin size of animated histograms. Related: histo_type
+
+        show_plot: <accepted types: boolean>
+                Allows the user to turn off automatic chart output.
+    """
+
     df_plot = organize_dataframe(cube, plot_type, variable, summary)
 
     fig = go.Figure
@@ -77,7 +164,7 @@ def plot_cube(
 
     if plot_type == 'histogram':
         print("Plotting Histogram")
-        fig = plot_histogram(df_plot, histo_type, histo_highlight, bin_size)
+        fig = plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, bin_size)
 
     if plot_type == 'box':
         print("Plotting Box")
@@ -85,6 +172,8 @@ def plot_cube(
 
     if show_plot:
         fig.show()
+
+    return fig
 
 
 # Secondary cube plotting methods
@@ -217,7 +306,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 
 
 # Plot a Histogram of the chart data
-def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
+def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, bin_size) -> go.Figure:
     fig = go.Figure()
 
     variables = list(pd.unique(df_plot['variables']))
@@ -229,7 +318,7 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
 
     # Create splits in the data to highlight geographically.
     if histo_highlight in latitude_alias or histo_highlight in longitude_alias:
-        bins, bins_labels = make_bins(bin_size, bin_min=-90.0, bin_max=90.0)
+        bins, bins_labels = make_bins(discrete_latlong_size, bin_min=-90.0, bin_max=90.0)
         if histo_highlight in latitude_alias:
             df_plot['bins'] = pd.cut(x=df_plot['lat'], bins=bins, labels=bins_labels)
         elif histo_highlight in longitude_alias:
@@ -286,7 +375,6 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
     elif histo_type == 'animated':
         fig_frames = []
         max_bin = 0
-        bin_count = 50
         view_max = df_plot['value'].max() * 1.025
         view_min = df_plot['value'].min() * 0.975
 
@@ -403,10 +491,13 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
             frames=fig_frames
         )
 
+        rounded_bounds = (round(df_plot['value'].max(), -3) - round(df_plot['value'].min(), -3))
+        bin_count = rounded_bounds / bin_size
+
         fig.update_traces(xbins=dict(
             start=view_min,
             end=view_max,
-            size=((df_plot['value'].max() - df_plot['value'].min())/bin_count)
+            size=(rounded_bounds / bin_count)
         ))
 
     else:

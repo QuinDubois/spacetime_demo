@@ -39,11 +39,11 @@ newObj = raster_align(data=ds)
 trimmed = raster_trim(newObj)
 
 # create spacetime time object
-yearObj = cube_time(start="2000-12-31", length=101, scale = "month")
-
+yearObj = cube_time(start="2000-12-31", length=101, scale="month")
 
 # make the alinged file object into a cube with a time element (writes the new file to disk)
-ds = make_cube(data = trimmed, fileName = "test.nc4", organizeFiles = "filestovar", organizeBands = "bandstotime", timeObj = yearObj) #varNames=names
+ds = make_cube(data=trimmed, fileName="test.nc4", organizeFiles="filestovar", organizeBands="bandstotime",
+               timeObj=yearObj)  # varNames=names
 
 # sub = select_time(cube=ds, range=['2000-12-31', '2010-12-31'])
 #
@@ -71,14 +71,15 @@ ds = make_cube(data = trimmed, fileName = "test.nc4", organizeFiles = "filestova
 #
 # # plot the cube and output the data set in dataframe format that made the plot
 # plot_cube_old(cube=ds, type="time_series", summary = "mean", showPlot = True)
-plot_cube(
+cube_figure = plot_cube(
     cube=ds,
     plot_type='histogram',
     variable=None,
     summary='max',
     histo_type='animated',
     histo_highlight='longitude',
-    bin_size=0.1,
+    discrete_latlong_size=0.1,
+    bin_size=500,
     show_plot=True,
 )
 
@@ -96,40 +97,6 @@ plot_cube(
 # #ds = load_cube(file = newCube)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # read in data set
 ########################################################################################################################
 # a list of paths to raster files
@@ -137,8 +104,8 @@ plot_cube(
 # path2 = "/Users/pburnham/Documents/geospatialData/Carya_ovata/Carya_ovata_sim_disc_10km.tif"
 
 
-#data = glob.glob('/Users/pburnham/Documents/geospatialData/kestrel/*.tif')
-#data.sort(key=lambda f: int(re.sub('\D', '', f)))
+# data = glob.glob('/Users/pburnham/Documents/geospatialData/kestrel/*.tif')
+# data.sort(key=lambda f: int(re.sub('\D', '', f)))
 #
 #
 # path1 = "/Users/pburnham/Documents/geospatialData/Carya_ovata/N0.tif"
@@ -157,18 +124,18 @@ plot_cube(
 # print(newObj.get_raster_data()[0].shape)
 
 # trim the rasters to the same greatest common bounding box
-#trimmed = raster_trim(newObj)
+# trimmed = raster_trim(newObj)
 
 # create spacetime time object
-#yearObj = cube_time(start="1980", length=28, scale = "year", skips = 1)
+# yearObj = cube_time(start="1980", length=28, scale = "year", skips = 1)
 
 # make the aligned file object into a cube with a time element (writes the new file to disk)
-#ds = make_cube(data = trimmed, fileName = "kestrel.nc4", organizeFiles = "stack", timeObj = yearObj)
+# ds = make_cube(data = trimmed, fileName = "kestrel.nc4", organizeFiles = "stack", timeObj = yearObj)
 
-#print(ds.get_raster_data())
+# print(ds.get_raster_data())
 
-#newCube = "/Users/pburnham/Documents/GitHub/barra_python/kestrel.nc4"
-#ds = load_cube(file = newCube)
+# newCube = "/Users/pburnham/Documents/GitHub/barra_python/kestrel.nc4"
+# ds = load_cube(file = newCube)
 
 
 #
@@ -182,7 +149,7 @@ plot_cube(
 # answer = cube_smasher(eq = "a * c", a = y, c = 5, parentCube = y)
 #
 # # plot the cube and output the data set in dataframe format that made the plot
-#t=plot_cube(cube=ds, type="space", summary = "mean", showPlot = False) # variable="B"
+# t=plot_cube(cube=ds, type="space", summary = "mean", showPlot = False) # variable="B"
 
 
 #
@@ -197,12 +164,3 @@ plot_cube(
 #
 # # load the cube object back in
 # ds = load_cube(file = newCube)
-
-
-
-
-
-
-
-
-

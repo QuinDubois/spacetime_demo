@@ -7,6 +7,7 @@
     <list default="true" id="66704c5d-d5f9-4218-a85e-776bde45d2b3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/spacetime/graphics/dataPlot.py" beforeDir="false" afterPath="$PROJECT_DIR$/spacetime/graphics/dataPlot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/testDriver.py" beforeDir="false" afterPath="$PROJECT_DIR$/testDriver.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
