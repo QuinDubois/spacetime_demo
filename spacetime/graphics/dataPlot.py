@@ -13,7 +13,6 @@ import math
 from spacetime.graphics.controlCubeSorter import sort_cube_data
 from spacetime.operations.cubeToDataframe import cube_to_dataframe
 
-
 # Style color presets
 COLOR_STYLES = {
     "chart_background": "#222831",
@@ -35,13 +34,13 @@ COLOR_STYLES = {
 
 # flags for sorting the selected data, Currently unused.
 FLAGS = {
-    "base"              : ["Base", COLOR_STYLES["line_colors"][0]],
-    "below_avg"         : ["Below Average", COLOR_STYLES["marker_colors"][0]],
-    "above_avg"         : ["Above Average", COLOR_STYLES["marker_colors"][1]],
-    "deviation_above"   : ["Deviation Below", COLOR_STYLES["marker_colors"][2]],
-    "deviation_below"   : ["Deviation Above", COLOR_STYLES["marker_colors"][3]],
-    "trending_up"       : ["Trending Up", COLOR_STYLES["marker_colors"][4]],
-    "trending_down"     : ["Trending Down", COLOR_STYLES["marker_colors"][5]],
+    "base": ["Base", COLOR_STYLES["line_colors"][0]],
+    "below_avg": ["Below Average", COLOR_STYLES["marker_colors"][0]],
+    "above_avg": ["Above Average", COLOR_STYLES["marker_colors"][1]],
+    "deviation_above": ["Deviation Below", COLOR_STYLES["marker_colors"][2]],
+    "deviation_below": ["Deviation Above", COLOR_STYLES["marker_colors"][3]],
+    "trending_up": ["Trending Up", COLOR_STYLES["marker_colors"][4]],
+    "trending_down": ["Trending Down", COLOR_STYLES["marker_colors"][5]],
 }
 
 
@@ -61,7 +60,6 @@ def plot_cube(
         bin_size: Union[int, float] = 10,
         show_plot: bool = True,
 ) -> None:
-
     df_plot = organize_dataframe(cube, plot_type, variable, summary)
 
     fig = go.Figure
@@ -93,7 +91,6 @@ def plot_cube(
 ########################################################################################################################
 # Plot a spatial choropleth chart
 def plot_spatial(cube, df) -> go.Figure:
-
     time = df["timeChar"]
     maxVal = np.nanmax(df["value"])
 
@@ -123,7 +120,6 @@ def plot_spatial(cube, df) -> go.Figure:
 
 # Plot a time series chart
 def plot_timeseries(df) -> go.Figure:
-
     time = df['timeChar']
     fig = px.line(df, x=time, y="value", color='variables')
 
@@ -134,7 +130,6 @@ def plot_timeseries(df) -> go.Figure:
 
 # Plot a control chart
 def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_trends) -> go.Figure:
-
     # Additional processing necessary for control chart plotting.
     df_plot, segments = sort_cube_data(df, FLAGS, show_avg='all', show_deviations='all', show_trends='updown')
 
@@ -215,7 +210,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
         legend_names = set()
         fig.for_each_trace(
             lambda trace:
-                trace.update(showlegend=False) if (trace.name in legend_names) else legend_names.add(trace.name)
+            trace.update(showlegend=False) if (trace.name in legend_names) else legend_names.add(trace.name)
         )
 
     return fig
@@ -271,7 +266,7 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
                     if histo_highlight in variable_alias:
                         trace = construct_trace(df=df_plot, filters=[variables[variable_count]], highlight='variable')
                         trace['name'] = f"variable: {variables[variable_count]}"
-                        fig.add_trace(trace, row=row+1, col=col+1)
+                        fig.add_trace(trace, row=row + 1, col=col + 1)
                         fig.update_layout(barmode='stack')
 
                     elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
@@ -280,7 +275,7 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
                                                     filters=[bins, variables[variable_count]],
                                                     highlight='geographic')
                             trace['name'] = f"variable: {variables[variable_count]}, {histo_highlight}: {bins}"
-                            fig.add_trace(trace, row=row+1, col=col+1)
+                            fig.add_trace(trace, row=row + 1, col=col + 1)
 
                         fig.update_layout(barmode='stack')
                     else:
@@ -291,6 +286,9 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
     elif histo_type == 'animated':
         fig_frames = []
         max_bin = 0
+        bin_count = 50
+        view_max = df_plot['value'].max() * 1.025
+        view_min = df_plot['value'].min() * 0.975
 
         # Make Slider
         sliders_dict = {
@@ -320,7 +318,8 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
                 for variable in variables:
                     data = {
                         'type': 'histogram',
-                        'x': np.array(df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['variables'] == variable)]),
+                        'x': np.array(
+                            df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['variables'] == variable)]),
                         'name': str(variable),
                         'showlegend': True
                     }
@@ -371,7 +370,7 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
             data=fig_frames[0]['data'],
             layout=go.Layout(
                 xaxis=dict(
-                    range=[df_plot['value'].min(), df_plot['value'].max()],
+                    range=[view_min, view_max],
                     autorange=False
                 ),
                 yaxis=dict(
@@ -403,6 +402,12 @@ def plot_histogram(df_plot, histo_type, histo_highlight, bin_size) -> go.Figure:
             ),
             frames=fig_frames
         )
+
+        fig.update_traces(xbins=dict(
+            start=view_min,
+            end=view_max,
+            size=((df_plot['value'].max() - df_plot['value'].min())/bin_count)
+        ))
 
     else:
         raise ValueError(f"{histo_type} is not a valid histogram type.")
@@ -462,10 +467,10 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
                 summ_df = df_plot.groupby(['time', "variables"]).median().reset_index()
             if summary == "min":
                 idx = df_plot.groupby(['time', 'variables'])['value'].idxmin()
-                summ_df = df_plot.loc[idx, ]
+                summ_df = df_plot.loc[idx,]
             if summary == "max":
                 idx = df_plot.groupby(['time', 'variables'])['value'].idxmax()
-                summ_df = df_plot.loc[idx, ]
+                summ_df = df_plot.loc[idx,]
         else:
             if summary == "mean":
                 summ_df = df_plot.groupby('time').mean().reset_index()
@@ -473,10 +478,10 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
                 summ_df = df_plot.groupby('time').median().reset_index()
             if summary == "min":
                 idx = df_plot.groupby(['time'])['value'].idxmin()
-                summ_df = df_plot.loc[idx, ]
+                summ_df = df_plot.loc[idx,]
             if summary == "max":
                 idx = df_plot.groupby(['time'])['value'].idxmax()
-                summ_df = df_plot.loc[idx, ]
+                summ_df = df_plot.loc[idx,]
     else:
         summ_df = df_plot
 
@@ -488,7 +493,6 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
 
 # Create Histogram Trace
 def construct_trace(df, bins=None, filters=[], highlight=''):
-
     trace = []
     filtered_df = pd.DataFrame(data={'col': [1, 2, 3]})
 
@@ -533,7 +537,6 @@ def update_fig_layout(fig) -> go.Figure:
 
 # Make bin list for histogram
 def make_bins(bin_size, bin_min, bin_max) -> Tuple[list, list]:
-
     bins = []
     bins_labels = []
     bin_val = bin_min
@@ -541,12 +544,12 @@ def make_bins(bin_size, bin_min, bin_max) -> Tuple[list, list]:
     while bin_val <= bin_max:
         bins.append(bin_val)
         if bin_val > bin_min:
-            bins_labels.append(f"{previous_bin+0.1} to {bin_val}")
+            bins_labels.append(f"{previous_bin + 0.1} to {bin_val}")
         previous_bin = bin_val
         bin_val += bin_size
 
     if bin_val > bin_max and bin_max not in bins:
         bins.append(bin_max)
-        bins_labels.append(f"{previous_bin+0.1} to {bin_max}")
+        bins_labels.append(f"{previous_bin + 0.1} to {bin_max}")
 
     return bins, bins_labels
