@@ -155,10 +155,10 @@ def plot_cube(
                                      summary,
                                      show_avg,
                                      show_deviations,
-                                     deviation_coefficient,
                                      show_trends,
                                      histo_type,
                                      histo_highlight,
+                                     deviation_coefficient,
                                      discrete_latlong_size,
                                      bin_size,
                                      show_plot,
@@ -655,7 +655,7 @@ def make_bins(bin_size, bin_min, bin_max) -> Tuple[list, list]:
     return bins, bins_labels
 
 
-# User Input Validation
+# Validate the user input so that we catch invalid parameter arguments before doing a lot of work.
 def validate_inputs(
         df,
         plot_type,
@@ -663,28 +663,67 @@ def validate_inputs(
         summary,
         show_avg,
         show_deviations,
-        deviation_coefficient,
         show_trends,
         histo_type,
         histo_highlight,
+        deviation_coefficient,
         discrete_latlong_size,
         bin_size,
-        show_plot
+        show_plot,
 ) -> bool:
 
+    # Dictionary of valid parameter arguments
+    valid_args = {
+        'variables': pd.unique(df['variables']),
+        'plot_type': ['space', 'timeseries', 'control', 'histogram', 'box'],
+        'summary': ['min', 'max', 'mean', 'median'],
+        'show_avg': ['above', 'below', 'all', 'none'],
+        'show_deviations': ['above', 'below', 'all', 'none'],
+        'show_trends': ['up', 'down', 'updown', 'all', 'none'],
+        'histo_type': ['single', 'multi', 'animated'],
+        'histo_highlight': ['var', 'variable', 'variables', 'lat', 'latitude', 'lon', 'long', 'longitude'],
+    }
+
     # Variable selection
-    variables = pd.unique(df['variables'])
-    if variable not in variables and variable is not None:
-        raise ValueError(f"{variable} does not exist in the 'variables' field.")
+    if variable not in valid_args['variables'] and variable is not None:
+        raise ValueError(
+            f"{variable} does not exist in the 'variables' field. Variables are: {valid_args['variables']}"
+        )
 
     # Plot type selection
-    plot_types = ['space', 'timeseries', 'control', 'histogram', 'box']
-    if plot_type not in plot_types:
-        raise ValueError(f"{plot_type} is not a valid plot type.")
+    if plot_type not in valid_args['plot_type']:
+        raise ValueError(
+            f"{plot_type} is not a valid plot type. Options are: {valid_args['plot_type']}"
+        )
 
     # Aggregation method selection
-    summary_options = ['min', 'max', 'mean', 'median']
-    if summary not in summary_options:
-        raise ValueError(f"{summary} is not a valid summary function.")
+    if summary not in valid_args['summary']:
+        raise ValueError(
+            f"{summary} is not a valid summary function. Options are: {valid_args['summary']}"
+        )
+
+    # Control Chart arguments
+    if show_avg not in valid_args['show_avg']:
+        raise ValueError(
+            f"{show_avg} not a valid average highlight option. Options are: {valid_args['show_avg']}"
+        )
+    if show_deviations not in valid_args['show_deviations']:
+        raise ValueError(
+            f"{show_deviations} not a valid deviations highlight option. Options are: {valid_args['show_deviations']}"
+        )
+    if show_trends not in valid_args['show_trends']:
+        raise ValueError(
+            f"{show_trends} not a valid trends highlight option. Options are: {valid_args['show_trends']}"
+        )
+
+    # Histogram arguments
+    if histo_type not in valid_args['histo_type']:
+        raise ValueError(
+            f"{histo_type} not a valid histogram chart type. Options are: {valid_args['histo_type']}"
+        )
+    if histo_highlight not in valid_args['histo_highlight']:
+        raise ValueError(
+            f"{histo_highlight} not a valid histogram highlight option. Options are: {valid_args['histo_highlight']}"
+        )
 
     return True
