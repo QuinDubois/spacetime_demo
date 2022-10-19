@@ -32,7 +32,7 @@ COLOR_STYLES = {
     ]
 }
 
-# flags for sorting the selected data, Currently unused.
+# flags for data styling.
 FLAGS = {
     "base": ["Base", COLOR_STYLES["line_colors"][0]],
     "below_avg": ["Below Average", COLOR_STYLES["marker_colors"][0]],
@@ -149,29 +149,41 @@ def plot_cube(
 
     df_plot = organize_dataframe(cube, plot_type, variable, summary)
 
-    fig = go.Figure
-    if plot_type == 'space':
-        print("Plotting Space")
-        fig = plot_spatial(cube, df_plot)
+    input_validity = validate_inputs(df_plot,
+                                     plot_type,
+                                     variable,
+                                     summary,
+                                     show_avg,
+                                     show_deviations,
+                                     deviation_coefficient,
+                                     show_trends,
+                                     histo_type,
+                                     histo_highlight,
+                                     discrete_latlong_size,
+                                     bin_size,
+                                     show_plot,
+                                     )
 
-    if plot_type == 'timeseries':
-        print("Plotting Time")
-        fig = plot_timeseries(df_plot)
+    if input_validity is True:
+        fig = go.Figure
 
-    if plot_type == 'control':
-        print("Plotting Control")
-        fig = plot_control(df_plot, show_avg, show_deviations, deviation_coefficient, show_trends)
+        if plot_type == 'space':
+            fig = plot_spatial(cube, df_plot)
 
-    if plot_type == 'histogram':
-        print("Plotting Histogram")
-        fig = plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, bin_size)
+        elif plot_type == 'timeseries':
+            fig = plot_timeseries(df_plot)
 
-    if plot_type == 'box':
-        print("Plotting Box")
-        fig = plot_box(df_plot, variable)
+        elif plot_type == 'control':
+            fig = plot_control(df_plot, show_avg, show_deviations, deviation_coefficient, show_trends)
 
-    if show_plot:
-        fig.show()
+        elif plot_type == 'histogram':
+            fig = plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, bin_size)
+
+        elif plot_type == 'box':
+            fig = plot_box(df_plot, variable)
+
+        if show_plot:
+            fig.show()
 
     return fig
 
@@ -220,7 +232,7 @@ def plot_timeseries(df) -> go.Figure:
 # Plot a control chart
 def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_trends) -> go.Figure:
     # Additional processing necessary for control chart plotting.
-    df_plot, segments = sort_cube_data(df, FLAGS, show_avg='all', show_deviations='all', show_trends='updown')
+    df_plot, segments = sort_cube_data(df, show_avg='all', show_deviations='all', show_trends='updown')
 
     fig = go.Figure()
 
@@ -534,7 +546,6 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
     shape_val = cube.get_shapeval()
 
     if shape_val == 4:
-        print("Filtering Variable")
         if plot_type == "space":
             if variable is None:
                 df_temp = df[df['variables'] == df['variables'][0]]
@@ -545,12 +556,10 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
     else:
         df_temp = df
 
-    print("Filtering NoData")
     df_plot = df_temp.where(df_temp != cube.get_nodata_value())
     summ_df = pd.DataFrame
 
     if plot_type != 'space':
-        print("GroupingBy summary")
         if shape_val == 4:
             if summary == "mean":
                 summ_df = df_plot.groupby(["time", "variables"]).mean().reset_index()
@@ -558,10 +567,10 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
                 summ_df = df_plot.groupby(['time', "variables"]).median().reset_index()
             if summary == "min":
                 idx = df_plot.groupby(['time', 'variables'])['value'].idxmin()
-                summ_df = df_plot.loc[idx,]
+                summ_df = df_plot.loc[idx]
             if summary == "max":
                 idx = df_plot.groupby(['time', 'variables'])['value'].idxmax()
-                summ_df = df_plot.loc[idx,]
+                summ_df = df_plot.loc[idx]
         else:
             if summary == "mean":
                 summ_df = df_plot.groupby('time').mean().reset_index()
@@ -569,10 +578,10 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
                 summ_df = df_plot.groupby('time').median().reset_index()
             if summary == "min":
                 idx = df_plot.groupby(['time'])['value'].idxmin()
-                summ_df = df_plot.loc[idx,]
+                summ_df = df_plot.loc[idx]
             if summary == "max":
                 idx = df_plot.groupby(['time'])['value'].idxmax()
-                summ_df = df_plot.loc[idx,]
+                summ_df = df_plot.loc[idx]
     else:
         summ_df = df_plot
 
@@ -644,3 +653,38 @@ def make_bins(bin_size, bin_min, bin_max) -> Tuple[list, list]:
         bins_labels.append(f"{previous_bin + 0.1} to {bin_max}")
 
     return bins, bins_labels
+
+
+# User Input Validation
+def validate_inputs(
+        df,
+        plot_type,
+        variable,
+        summary,
+        show_avg,
+        show_deviations,
+        deviation_coefficient,
+        show_trends,
+        histo_type,
+        histo_highlight,
+        discrete_latlong_size,
+        bin_size,
+        show_plot
+) -> bool:
+
+    # Variable selection
+    variables = pd.unique(df['variables'])
+    if variable not in variables and variable is not None:
+        raise ValueError(f"{variable} does not exist in the 'variables' field.")
+
+    # Plot type selection
+    plot_types = ['space', 'timeseries', 'control', 'histogram', 'box']
+    if plot_type not in plot_types:
+        raise ValueError(f"{plot_type} is not a valid plot type.")
+
+    # Aggregation method selection
+    summary_options = ['min', 'max', 'mean', 'median']
+    if summary not in summary_options:
+        raise ValueError(f"{summary} is not a valid summary function.")
+
+    return True

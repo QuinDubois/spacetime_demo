@@ -10,14 +10,12 @@ from typing import Tuple, List
 ########################################################################################################################
 def sort_cube_data(
         df: pandas.DataFrame,
-        FLAGS,
         show_avg="all",
         show_deviations="all",
         deviation_coefficient=1,
         show_trends="updown",
 
 ) -> Tuple[pandas.DataFrame, List]:
-    print("Sorting through data in cube.")
 
     df_sorted = df
     df_sorted.insert(loc=0, column='flag', value='base')
