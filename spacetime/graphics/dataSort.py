@@ -75,14 +75,36 @@ def sort_dataframe(
     df_sorted = df
     df_sorted.insert(loc=0, column='flag', value='base')
 
+    std = np.std(df['value'])
+    avg = get_avg(df)
+
     if show_avg != 'none':
         df_sorted = sort_average(df, show_avg)
+
+        # TODO: I like this numpy.where selection method, I wonder if I can rework the code to use it more since it may
+        #       end up more efficient. I ran some quick tests and it may end up cutting down a fair amount of runtime
+        #       once fully implemented.
+
+        df_sorted['above_avg_mask'] = np.where(df['value'].values >= avg, 1, 0)
+        df_sorted['below_avg_mask'] = np.where(df['value'].values < avg, 1, 0)
+
     if show_deviations != 'none':
         df_sorted = sort_deviations(df, show_deviations, coefficient=deviation_coefficient)
+
+        # TODO: More of the same numpy.where from above.
+
+        df_sorted['deviation_above_mask'] = np.where(
+            df['value'].values >= (df['value'] - (std * deviation_coefficient) >= avg), 1, 0
+        )
+        df_sorted['deviation_below_mask'] = np.where(
+            df['value'].values < (df['value'] - (std * deviation_coefficient) < avg), 1, 0
+        )
     if show_trends != 'none':
         segments = sort_trends(df)
     else:
         df_sorted = df
+
+    print(df_sorted.head())
 
     return df_sorted, segments
 
