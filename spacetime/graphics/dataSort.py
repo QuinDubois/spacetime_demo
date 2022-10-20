@@ -5,10 +5,65 @@ import numpy as np
 
 from typing import Tuple, List
 
+from spacetime.operations.cubeToDataframe import cube_to_dataframe
+
 
 # Main Method
 ########################################################################################################################
-def sort_cube_data(
+
+# Process Cube data for chart plotting
+def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
+    df = cube_to_dataframe(cube)
+    shape_val = cube.get_shapeval()
+
+    if shape_val == 4:
+        if plot_type == "space":
+            if variable is None:
+                df_temp = df[df['variables'] == df['variables'][0]]
+            else:
+                df_temp = df[df['variables'] == variable]
+        else:
+            df_temp = df
+    else:
+        df_temp = df
+
+    df_plot = df_temp.where(df_temp != cube.get_nodata_value())
+    summ_df = pd.DataFrame
+
+    if plot_type != 'space':
+        if shape_val == 4:
+            if summary == "mean":
+                summ_df = df_plot.groupby(["time", "variables"]).mean().reset_index()
+            if summary == "median":
+                summ_df = df_plot.groupby(['time', "variables"]).median().reset_index()
+            if summary == "min":
+                idx = df_plot.groupby(['time', 'variables'])['value'].idxmin()
+                summ_df = df_plot.loc[idx]
+            if summary == "max":
+                idx = df_plot.groupby(['time', 'variables'])['value'].idxmax()
+                summ_df = df_plot.loc[idx]
+        else:
+            if summary == "mean":
+                summ_df = df_plot.groupby('time').mean().reset_index()
+            if summary == "median":
+                summ_df = df_plot.groupby('time').median().reset_index()
+            if summary == "min":
+                idx = df_plot.groupby(['time'])['value'].idxmin()
+                summ_df = df_plot.loc[idx]
+            if summary == "max":
+                idx = df_plot.groupby(['time'])['value'].idxmax()
+                summ_df = df_plot.loc[idx]
+    else:
+        summ_df = df_plot
+
+    summ_df.insert(loc=0, column='timeChar', value=summ_df['time'].astype(str))
+    summ_df.insert(loc=0, column='year', value=pd.DatetimeIndex(summ_df['time']).year)
+
+    return summ_df
+
+
+# sort data for control chart
+def sort_dataframe(
         df: pandas.DataFrame,
         show_avg="all",
         show_deviations="all",
