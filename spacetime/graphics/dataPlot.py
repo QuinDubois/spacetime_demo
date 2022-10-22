@@ -231,7 +231,7 @@ def plot_timeseries(df) -> go.Figure:
 # Plot a control chart
 def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_trends) -> go.Figure:
     # Additional processing necessary for control chart plotting.
-    df_plot, segments = sort_dataframe(df, show_avg='all', show_deviations='all', show_trends='updown')
+    df_plot, segments = sort_dataframe(df, show_avg=show_avg, show_deviations=show_deviations, show_trends=show_trends)
 
     fig = go.Figure()
 
@@ -320,7 +320,12 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, bin_size) -> go.Figure:
     fig = go.Figure()
 
-    variables = list(pd.unique(df_plot['variables']))
+    has_vars = False
+
+    if 'variables' in df_plot.columns:
+        has_vars = True
+        variables = list(pd.unique(df_plot['variables']))
+
     years = list(pd.unique(df_plot['year']))
 
     variable_alias = ['var', 'variables', 'variable']
@@ -337,50 +342,57 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
 
     # Singular Histogram chart output
     if histo_type == 'single':
-        if histo_highlight in variable_alias:
-            for variable in variables:
-                trace = construct_trace(df=df_plot, filters=[variable], highlight='variable')
-                trace['name'] = f"variable: {variable}"
-                fig.add_trace(trace)
-            fig.update_layout(barmode='stack')
+        if has_vars is True:
+            if histo_highlight in variable_alias:
+                for variable in variables:
+                    trace = construct_trace(df=df_plot, filters=[variable], highlight='variable')
+                    trace['name'] = f"variable: {variable}"
+                    fig.add_trace(trace)
+                fig.update_layout(barmode='stack')
 
-        elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
-            for bins in pd.unique(df_plot['bins']):
-                trace = construct_trace(df=df_plot, filters=[bins], highlight='geographic')
-                trace['name'] = f"{histo_highlight}: {bins}"
-                fig.add_trace(trace)
+            elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
+                for bins in pd.unique(df_plot['bins']):
+                    trace = construct_trace(df=df_plot, filters=[bins], highlight='geographic')
+                    trace['name'] = f"{histo_highlight}: {bins}"
+                    fig.add_trace(trace)
 
-            fig.update_layout(barmode='stack')
+                fig.update_layout(barmode='stack')
+        else:
+            fig = px.Histogram(x=df_plot['value'])
 
     # Histogram Chart Output with subplots.
     elif histo_type == 'multi':
-        subplot_count = len(variables)
-        subplot_col = 2
-        subplot_row = math.ceil(subplot_count / 2)
-        variable_count = 0
-        fig = make_subplots(rows=subplot_row, cols=subplot_col)
 
-        for col in range(0, subplot_col):
-            for row in range(0, subplot_row):
-                if variable_count <= len(variables):
-                    if histo_highlight in variable_alias:
-                        trace = construct_trace(df=df_plot, filters=[variables[variable_count]], highlight='variable')
-                        trace['name'] = f"variable: {variables[variable_count]}"
-                        fig.add_trace(trace, row=row + 1, col=col + 1)
-                        fig.update_layout(barmode='stack')
+        if has_vars is True:
+            subplot_count = len(variables)
+            subplot_col = 2
+            subplot_row = math.ceil(subplot_count / 2)
+            variable_count = 0
+            fig = make_subplots(rows=subplot_row, cols=subplot_col)
 
-                    elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
-                        for bins in pd.unique(df_plot['bins']):
-                            trace = construct_trace(df=df_plot,
-                                                    filters=[bins, variables[variable_count]],
-                                                    highlight='geographic')
-                            trace['name'] = f"variable: {variables[variable_count]}, {histo_highlight}: {bins}"
+            for col in range(0, subplot_col):
+                for row in range(0, subplot_row):
+                    if variable_count <= len(variables):
+                        if histo_highlight in variable_alias:
+                            trace = construct_trace(df=df_plot, filters=[variables[variable_count]], highlight='variable')
+                            trace['name'] = f"variable: {variables[variable_count]}"
                             fig.add_trace(trace, row=row + 1, col=col + 1)
+                            fig.update_layout(barmode='stack')
 
-                        fig.update_layout(barmode='stack')
-                    else:
-                        raise ValueError(f"{histo_highlight} is not a valid highlight.")
-                    variable_count += 1
+                        elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
+                            for bins in pd.unique(df_plot['bins']):
+                                trace = construct_trace(df=df_plot,
+                                                        filters=[bins, variables[variable_count]],
+                                                        highlight='geographic')
+                                trace['name'] = f"variable: {variables[variable_count]}, {histo_highlight}: {bins}"
+                                fig.add_trace(trace, row=row + 1, col=col + 1)
+
+                            fig.update_layout(barmode='stack')
+                        else:
+                            raise ValueError(f"{histo_highlight} is not a valid highlight.")
+                        variable_count += 1
+        else:
+            raise ValueError("Multi histograms only available if cube contains multiple variables.")
 
     # Animated Histogram Chart by Year.
     elif histo_type == 'animated':
@@ -414,12 +426,24 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
             frame_data = []
 
             if histo_highlight in variable_alias:
-                for variable in variables:
+                if has_vars is True:
+                    for variable in variables:
+                        data = {
+                            'type': 'histogram',
+                            'x': np.array(
+                                df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['variables'] == variable)]),
+                            'name': str(variable),
+                            'showlegend': True
+                        }
+                        frame_data.append(data)
+                        absolute_max_bin = len(data['x'])
+                        max_bin = max(max_bin, absolute_max_bin)
+                else:
                     data = {
                         'type': 'histogram',
                         'x': np.array(
-                            df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['variables'] == variable)]),
-                        'name': str(variable),
+                            df_plot['value'].loc[df_plot['year'] == year]
+                        ),
                         'showlegend': True
                     }
                     frame_data.append(data)
@@ -511,9 +535,6 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
             size=(rounded_bounds / bin_count)
         ))
 
-    else:
-        raise ValueError(f"{histo_type} is not a valid histogram type.")
-
     return fig
 
 
@@ -521,16 +542,22 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
 def plot_box(df, variable) -> go.Figure:
     fig = go.Figure()
 
-    if variable == None:
-        var_opts = pd.unique(df['variables'])
-    else:
-        var_opts = variable
+    if 'variables' in df.columns:
+        if variable is None:
+            var_opts = pd.unique(df['variables'])
+        else:
+            var_opts = variable
 
-    for var in var_opts:
+        for var in var_opts:
+            fig.add_trace(go.Box(
+                x=df['variables'].loc[df['variables'] == var],
+                y=df['value'].loc[df['variables'] == var],
+                name=f"variable: {var}",
+                showlegend=True
+            ))
+    else:
         fig.add_trace(go.Box(
-            x=df['variables'].loc[df['variables'] == var],
-            y=df['value'].loc[df['variables'] == var],
-            name=f"variable: {var}",
+            y=df['value'],
             showlegend=True
         ))
 

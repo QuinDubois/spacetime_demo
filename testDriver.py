@@ -73,8 +73,11 @@ ds = make_cube(data=trimmed, fileName="test.nc4", organizeFiles="filestovar", or
 # plot_cube_old(cube=ds, type="time_series", summary = "mean", showPlot = True)
 cube_figure = plot_cube(
     cube=ds,
-    plot_type='control',
+    plot_type='space',
     variable=None,
+    show_avg='above',
+    show_deviations='below',
+    show_trends='updown',
     summary='max',
     histo_type='animated',
     histo_highlight='longitude',
