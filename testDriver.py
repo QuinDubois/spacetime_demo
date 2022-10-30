@@ -7,6 +7,8 @@ from spacetime.operations.makeCube import make_cube
 from spacetime.operations.loadCube import load_cube
 from spacetime.graphics.dataPlot import plot_cube
 
+from spacetime.output.writeCSV import write_csv
+
 from spacetime.operations.time import cube_time, return_time, scale_time, select_time
 import matplotlib.pyplot as plt
 from spacetime.operations.cubeToDataframe import cube_to_dataframe
@@ -73,18 +75,21 @@ ds = make_cube(data=trimmed, fileName="test.nc4", organizeFiles="filestovar", or
 # plot_cube_old(cube=ds, type="time_series", summary = "mean", showPlot = True)
 cube_figure = plot_cube(
     cube=ds,
-    plot_type='space',
-    variable=None,
-    show_avg='above',
+    plot_type='histogram',
+    variable='1',
+    show_avg='all',
     show_deviations='below',
     show_trends='updown',
-    summary='max',
+    summary='min',
     histo_type='animated',
-    histo_highlight='longitude',
+    histo_highlight='none',
     discrete_latlong_size=0.1,
+    deviation_coefficient=1,
     bin_size=500,
     show_plot=True,
 )
+
+# write_csv(ds, 'carya_ovata_10km.csv')
 
 # # convert a cube into a dataframe
 # df = cube_to_dataframe(cube=ds)

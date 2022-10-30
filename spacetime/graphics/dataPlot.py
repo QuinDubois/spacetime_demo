@@ -1,3 +1,5 @@
+# File Header includes imports and constants
+########################################################################################################################
 import numpy as np
 import pandas as pd
 import plotly_express as px
@@ -22,10 +24,10 @@ COLOR_STYLES = {
         "#777777"
     ],
     "marker_colors": [
-        "#FF00FF",
         "#00FFFF",
-        "#0000FF",
+        "#FF00FF",
         "#FFFF00",
+        "#0000FF",
         "#00FF00",
         "#FF0000",
     ]
@@ -34,17 +36,19 @@ COLOR_STYLES = {
 # flags for data styling.
 FLAGS = {
     "base": ["Base", COLOR_STYLES["line_colors"][0]],
-    "below_avg": ["Below Average", COLOR_STYLES["marker_colors"][0]],
-    "above_avg": ["Above Average", COLOR_STYLES["marker_colors"][1]],
-    "deviation_above": ["Deviation Below", COLOR_STYLES["marker_colors"][2]],
-    "deviation_below": ["Deviation Above", COLOR_STYLES["marker_colors"][3]],
+    "above_avg": ["Above Average", COLOR_STYLES["marker_colors"][0]],
+    "below_avg": ["Below Average", COLOR_STYLES["marker_colors"][1]],
+    "deviation_above": ["Deviation Above", COLOR_STYLES["marker_colors"][2]],
+    "deviation_below": ["Deviation Below", COLOR_STYLES["marker_colors"][3]],
     "trending_up": ["Trending Up", COLOR_STYLES["marker_colors"][4]],
     "trending_down": ["Trending Down", COLOR_STYLES["marker_colors"][5]],
 }
-
-
-# Main cube plotting method
 ########################################################################################################################
+
+
+# Primary Methods
+########################################################################################################################
+# Main Plotting method, delegates plotting to sub-methods and returns a completed plotly figure.
 def plot_cube(
         cube,
         plot_type: str = "timeseries",
@@ -134,6 +138,7 @@ def plot_cube(
                                     alias: 'lat'
                     'longitude' - highlights bins based on the longitude degree range the value was measured in.
                                     alias: 'lon', 'long'
+                    'none' - no special highlighting.
 
         discrete_latlong_size: <accepted types: integer, float>
                 For use with Histograms, determines the size in degrees of the distinctions for latitude and
@@ -157,10 +162,6 @@ def plot_cube(
                                      show_trends,
                                      histo_type,
                                      histo_highlight,
-                                     deviation_coefficient,
-                                     discrete_latlong_size,
-                                     bin_size,
-                                     show_plot,
                                      )
 
     if input_validity:
@@ -185,6 +186,7 @@ def plot_cube(
             fig.show()
 
     return fig
+########################################################################################################################
 
 
 # Secondary cube plotting methods
@@ -192,7 +194,9 @@ def plot_cube(
 # Plot a spatial choropleth chart
 def plot_spatial(cube, df) -> go.Figure:
     time = df["timeChar"]
-    maxVal = np.nanmax(df["value"])
+
+    # Max value for legend
+    max_val = np.nanmax(df["value"])
 
     coords = cube.upper_left_corner()
 
@@ -202,7 +206,7 @@ def plot_spatial(cube, df) -> go.Figure:
         lon='lon',
         color='value',
         animation_frame=time,
-        range_color=(0, maxVal),
+        range_color=(0, max_val),
         color_continuous_scale='Viridis',
         opacity=0.5,
     )
@@ -211,7 +215,7 @@ def plot_spatial(cube, df) -> go.Figure:
         mapbox_style='carto-darkmatter',
         mapbox_zoom=3,
         mapbox_center={'lat': coords[0], 'lon': coords[1]},
-    )  # Spatial chart specific layout options.
+    )
 
     fig = update_fig_layout(fig)
 
@@ -231,7 +235,13 @@ def plot_timeseries(df) -> go.Figure:
 # Plot a control chart
 def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_trends) -> go.Figure:
     # Additional processing necessary for control chart plotting.
-    df_plot, segments = sort_dataframe(df, show_avg=show_avg, show_deviations=show_deviations, show_trends=show_trends)
+    df_plot, segments = sort_dataframe(
+        df,
+        show_avg=show_avg,
+        show_deviations=show_deviations,
+        deviation_coefficient=deviation_coefficient,
+        show_trends=show_trends
+    )
 
     fig = go.Figure()
 
@@ -243,34 +253,35 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
         showlegend=False,
     ))  # Base line plot
 
+    # Filter dataset and select the relevant style options for each trace.
     for key in FLAGS.keys():
-        summ_df = df_plot[df_plot.flag == key]
         if show_avg != 'none':
             if key == 'above_avg' and show_avg != 'below':
                 marker_name = FLAGS[key][0]
                 marker_color = FLAGS[key][1]
-                fig = add_markers(summ_df, fig, marker_name, marker_color)
+                fig = add_markers(df_plot.loc[df_plot['above_avg_mask'] == 1], fig, marker_name, marker_color)
             if key == 'below_avg' and show_avg != 'above':
                 marker_name = FLAGS[key][0]
                 marker_color = FLAGS[key][1]
-                fig = add_markers(summ_df, fig, marker_name, marker_color)
+                fig = add_markers(df_plot.loc[df_plot['below_avg_mask'] == 1], fig, marker_name, marker_color)
 
         if show_deviations != 'none':
-            if key == 'deviation_above' and show_avg != 'below':
+            if key == 'deviation_above' and show_deviations != 'below':
                 marker_name = FLAGS[key][0]
                 marker_color = FLAGS[key][1]
-                fig = add_markers(summ_df, fig, marker_name, marker_color)
-            if key == 'deviation_below' and show_avg != 'above':
+                fig = add_markers(df_plot.loc[df_plot['deviation_above_mask'] == 1], fig, marker_name, marker_color)
+            if key == 'deviation_below' and show_deviations != 'above':
                 marker_name = FLAGS[key][0]
                 marker_color = FLAGS[key][1]
-                fig = add_markers(summ_df, fig, marker_name, marker_color)
+                fig = add_markers(df_plot.loc[df_plot['deviation_below_mask'] == 1], fig, marker_name, marker_color)
 
+    # Add trend traces to chart.
     if show_trends != 'none':
         for start_idx, end_idx in zip(segments[:-1], segments[1:]):
             segment = df_plot.iloc[start_idx:end_idx + 1, :].copy()
 
+            # Serialize the time value since we can't do linear regressions on datetime64[ns]
             segment['serial_time'] = [(d - datetime.datetime(1970, 1, 1)).days for d in segment['time']]
-
             x = sm.add_constant(segment['serial_time'])
             model = sm.OLS(segment['value'], x).fit()
             segment['fitted_values'] = model.fittedvalues
@@ -280,6 +291,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 
             trend_name = "Trending Up" if model.params['serial_time'] > 0 else "Trending Down"
 
+            # Determine if the current trace should be added to the figure.
             print_trend = False
 
             if show_trends == 'all':
@@ -306,7 +318,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
                     name=trend_name,
                 ))
 
-        # Ensure duplicate legend items get filtered
+        # Ensure duplicate legend items don't get added.
         legend_names = set()
         fig.for_each_trace(
             lambda trace:
@@ -320,6 +332,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, bin_size) -> go.Figure:
     fig = go.Figure()
 
+    # If the
     has_vars = False
 
     if 'variables' in df_plot.columns:
@@ -332,7 +345,7 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
     latitude_alias = ['lat', 'latitude']
     longitude_alias = ['lon', 'long', 'longitude']
 
-    # Create splits in the data to highlight geographically.
+    # Create categories in the data to highlight geographically.
     if histo_highlight in latitude_alias or histo_highlight in longitude_alias:
         bins, bins_labels = make_bins(discrete_latlong_size, bin_min=-90.0, bin_max=90.0)
         if histo_highlight in latitude_alias:
@@ -342,21 +355,20 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
 
     # Singular Histogram chart output
     if histo_type == 'single':
-        if has_vars is True:
-            if histo_highlight in variable_alias:
-                for variable in variables:
-                    trace = construct_trace(df=df_plot, filters=[variable], highlight='variable')
-                    trace['name'] = f"variable: {variable}"
-                    fig.add_trace(trace)
-                fig.update_layout(barmode='stack')
+        if histo_highlight in variable_alias and has_vars is True:
+            for variable in variables:
+                trace = construct_histo_trace(df=df_plot, filters=[variable], highlight='variable')
+                trace['name'] = f"variable: {variable}"
+                fig.add_trace(trace)
+            fig.update_layout(barmode='stack')
 
-            elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
-                for bins in pd.unique(df_plot['bins']):
-                    trace = construct_trace(df=df_plot, filters=[bins], highlight='geographic')
-                    trace['name'] = f"{histo_highlight}: {bins}"
-                    fig.add_trace(trace)
+        elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
+            for bins in pd.unique(df_plot['bins']):
+                trace = construct_histo_trace(df=df_plot, filters=[bins], highlight='geographic')
+                trace['name'] = f"{histo_highlight}: {bins}"
+                fig.add_trace(trace)
 
-                fig.update_layout(barmode='stack')
+            fig.update_layout(barmode='stack')
         else:
             fig = px.Histogram(x=df_plot['value'])
 
@@ -373,17 +385,21 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
             for col in range(0, subplot_col):
                 for row in range(0, subplot_row):
                     if variable_count <= len(variables):
-                        if histo_highlight in variable_alias:
-                            trace = construct_trace(df=df_plot, filters=[variables[variable_count]], highlight='variable')
+                        if histo_highlight in variable_alias or histo_highlight == 'none':
+                            trace = construct_histo_trace(
+                                df=df_plot,
+                                filters=[variables[variable_count]],
+                                highlight='variable'
+                            )
                             trace['name'] = f"variable: {variables[variable_count]}"
                             fig.add_trace(trace, row=row + 1, col=col + 1)
                             fig.update_layout(barmode='stack')
 
                         elif histo_highlight in latitude_alias or histo_highlight in longitude_alias:
                             for bins in pd.unique(df_plot['bins']):
-                                trace = construct_trace(df=df_plot,
-                                                        filters=[bins, variables[variable_count]],
-                                                        highlight='geographic')
+                                trace = construct_histo_trace(df=df_plot,
+                                                              filters=[bins, variables[variable_count]],
+                                                              highlight='geographic')
                                 trace['name'] = f"variable: {variables[variable_count]}, {histo_highlight}: {bins}"
                                 fig.add_trace(trace, row=row + 1, col=col + 1)
 
@@ -474,6 +490,16 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
                     absolute_max_bin = len(data['x'])
                     max_bin = max(max_bin, absolute_max_bin)
 
+            if histo_highlight == 'none':
+                data = {
+                    'type': 'histogram',
+                    'x': np.array(df_plot['value'].loc[df_plot['year'] == year]),
+                    'showlegend': False
+                }
+                frame_data.append(data)
+                absolute_max_bin = len(data['x'])
+                max_bin = max(max_bin, absolute_max_bin)
+
             frame = go.Frame(data=frame_data, name=str(year))
 
             fig_frames.append(frame)
@@ -526,6 +552,7 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
             frames=fig_frames
         )
 
+        # Keep the scale consistent across frames, so that we don't end up with bins too large or too small.
         rounded_bounds = (round(df_plot['value'].max(), -3) - round(df_plot['value'].min(), -3))
         bin_count = rounded_bounds / bin_size
 
@@ -567,9 +594,9 @@ def plot_box(df, variable) -> go.Figure:
 # Helper methods
 ########################################################################################################################
 # Create Histogram Trace
-def construct_trace(df, bins=None, filters=[], highlight=''):
+def construct_histo_trace(df, bins=None, filters=[], highlight=''):
     trace = []
-    filtered_df = pd.DataFrame(data={'col': [1, 2, 3]})
+    filtered_df = pd.DataFrame()
 
     if highlight == 'variable':
         filtered_df = df['value'].loc[df['variables'] == filters[0]]
@@ -580,7 +607,7 @@ def construct_trace(df, bins=None, filters=[], highlight=''):
         else:
             filtered_df = df.loc[df['bins'] == filters[0]]
 
-    trace = go.Histogram(x=filtered_df['value'])
+    trace = go.Histogram(x=filtered_df)
 
     return trace
 
@@ -641,10 +668,6 @@ def validate_inputs(
         show_trends,
         histo_type,
         histo_highlight,
-        deviation_coefficient,
-        discrete_latlong_size,
-        bin_size,
-        show_plot,
 ) -> bool:
 
     # Dictionary of valid parameter arguments
@@ -656,7 +679,7 @@ def validate_inputs(
         'show_deviations': ['above', 'below', 'all', 'none'],
         'show_trends': ['up', 'down', 'updown', 'all', 'none'],
         'histo_type': ['single', 'multi', 'animated'],
-        'histo_highlight': ['var', 'variable', 'variables', 'lat', 'latitude', 'lon', 'long', 'longitude'],
+        'histo_highlight': ['var', 'variable', 'variables', 'lat', 'latitude', 'lon', 'long', 'longitude', 'none'],
     }
 
     # Variable selection

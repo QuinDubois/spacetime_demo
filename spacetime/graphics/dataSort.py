@@ -10,7 +10,6 @@ from spacetime.operations.cubeToDataframe import cube_to_dataframe
 
 # Main Method
 ########################################################################################################################
-
 # Process Cube data for chart plotting
 def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
     df = cube_to_dataframe(cube)
@@ -28,6 +27,7 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
         df_temp = df
 
     df_plot = df_temp.where(df_temp != cube.get_nodata_value())
+    df_plot = df_plot.loc[df_plot['value'] != 0]
     summ_df = pd.DataFrame
 
     if plot_type != 'space':
@@ -69,72 +69,37 @@ def sort_dataframe(
         show_deviations="all",
         deviation_coefficient=1,
         show_trends="updown",
-
 ) -> Tuple[pandas.DataFrame, List]:
 
     df_sorted = df
-    df_sorted.insert(loc=0, column='flag', value='base')
 
     std = np.std(df['value'])
     avg = get_avg(df)
 
     if show_avg != 'none':
-        df_sorted = sort_average(df, show_avg)
 
-        # TODO: I like this numpy.where selection method, I wonder if I can rework the code to use it more since it may
-        #       end up more efficient. I ran some quick tests and it may end up cutting down a fair amount of runtime
-        #       once fully implemented.
-        #
-        # df_sorted['above_avg_mask'] = np.where(df['value'].values >= avg, 1, 0)
-        # df_sorted['below_avg_mask'] = np.where(df['value'].values < avg, 1, 0)
+        df_sorted['above_avg_mask'] = np.where(df['value'].values >= avg, 1, 0)
+        df_sorted['below_avg_mask'] = np.where(df['value'].values < avg, 1, 0)
 
     if show_deviations != 'none':
-        df_sorted = sort_deviations(df, show_deviations, coefficient=deviation_coefficient)
 
-        # TODO: More of the same numpy.where from above.
-        #
-        # df_sorted['deviation_above_mask'] = np.where(
-        #     df['value'].values >= (df['value'] - (std * deviation_coefficient) >= avg), 1, 0
-        # )
-        # df_sorted['deviation_below_mask'] = np.where(
-        #     df['value'].values < (df['value'] - (std * deviation_coefficient) < avg), 1, 0
-        # )
+        df_sorted['deviation_above_mask'] = np.where(
+            df['value'].values >= (avg + (std * deviation_coefficient)), 1, 0
+        )
+        df_sorted['deviation_below_mask'] = np.where(
+            df['value'].values < (avg - (std * deviation_coefficient)), 1, 0
+        )
 
     if show_trends != 'none':
         segments = sort_trends(df)
     else:
         df_sorted = df
 
-    df_sorted['flag'] = df['flag'].astype('category')
-
-    print(df_sorted.info())
-
     return df_sorted, segments
 
 
 # Helper methods
 ########################################################################################################################
-def sort_average(df, show_avg) -> pandas.DataFrame:
-    avg = get_avg(df)
-    if show_avg != 'below':
-        df.loc[(df['value'] > avg), 'flag'] = 'above_avg'
-    if show_avg != 'above':
-        df.loc[(df['value'] < avg), 'flag'] = 'below_avg'
-
-    return df
-
-
-def sort_deviations(df, show_deviations, coefficient) -> pandas.DataFrame:
-    std = np.std(df['value'])
-    avg = get_avg(df)
-    if show_deviations != 'below':
-        df.loc[(df['value'] - (std * coefficient) > avg), 'flag'] = 'deviation_above'
-    if show_deviations != 'above':
-        df.loc[(df['value'] - (-(std * coefficient)) < avg), 'flag'] = 'deviation_below'
-
-    return df
-
-
 def sort_trends(df) -> List:
     min_change = 10
     curr_changes = 0
@@ -182,10 +147,9 @@ def sort_trends(df) -> List:
 
 
 def get_avg(df):
-    return np.average(df['value'])
+    return np.average(df['value'].values)
 
 
 def calc_slope(df):
-
     slope = np.polyfit(df['row'], df['value'], 1)
     return slope[0]
