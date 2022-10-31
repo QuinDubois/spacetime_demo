@@ -27,7 +27,6 @@ def organize_dataframe(cube, plot_type, variable, summary) -> pd.DataFrame:
         df_temp = df
 
     df_plot = df_temp.where(df_temp != cube.get_nodata_value())
-    df_plot = df_plot.loc[df_plot['value'] != 0]
     summ_df = pd.DataFrame
 
     if plot_type != 'space':
@@ -72,6 +71,7 @@ def sort_dataframe(
 ) -> Tuple[pandas.DataFrame, List]:
 
     df_sorted = df
+    segments = []
 
     std = np.std(df['value'])
     avg = get_avg(df)
@@ -92,8 +92,6 @@ def sort_dataframe(
 
     if show_trends != 'none':
         segments = sort_trends(df)
-    else:
-        df_sorted = df
 
     return df_sorted, segments
 

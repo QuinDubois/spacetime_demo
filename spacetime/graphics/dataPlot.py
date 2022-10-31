@@ -225,7 +225,11 @@ def plot_spatial(cube, df) -> go.Figure:
 # Plot a time series chart
 def plot_timeseries(df) -> go.Figure:
     time = df['timeChar']
-    fig = px.line(df, x=time, y="value", color='variables')
+
+    if 'variables' in df.columns():
+        fig = px.line(df, x=time, y="value", color='variables')
+    else:
+        fig = px.line(df, x=time, y="value")
 
     fig = update_fig_layout(fig)
 
@@ -282,6 +286,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 
             # Serialize the time value since we can't do linear regressions on datetime64[ns]
             segment['serial_time'] = [(d - datetime.datetime(1970, 1, 1)).days for d in segment['time']]
+
             x = sm.add_constant(segment['serial_time'])
             model = sm.OLS(segment['value'], x).fit()
             segment['fitted_values'] = model.fittedvalues
@@ -332,7 +337,7 @@ def plot_control(df, show_avg, show_deviations, deviation_coefficient, show_tren
 def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, bin_size) -> go.Figure:
     fig = go.Figure()
 
-    # If the
+    # Quickly check if the dataset has variables or not.
     has_vars = False
 
     if 'variables' in df_plot.columns:
@@ -370,7 +375,7 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
 
             fig.update_layout(barmode='stack')
         else:
-            fig = px.Histogram(x=df_plot['value'])
+            fig = px.histogram(x=df_plot['value'])
 
     # Histogram Chart Output with subplots.
     elif histo_type == 'multi':
@@ -414,8 +419,9 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
     elif histo_type == 'animated':
         fig_frames = []
         max_bin = 0
-        view_max = df_plot['value'].max() * 1.025
-        view_min = df_plot['value'].min() * 0.975
+        view_padding = df_plot['value'].max() * 0.05 if df_plot['value'].max() > 0 else 1
+        view_max = df_plot['value'].max() + view_padding
+        view_min = df_plot['value'].min() - view_padding
 
         # Make Slider
         sliders_dict = {
@@ -441,63 +447,50 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
 
             frame_data = []
 
+            # For variable highlighting
             if histo_highlight in variable_alias:
-                if has_vars is True:
-                    for variable in variables:
-                        data = {
-                            'type': 'histogram',
-                            'x': np.array(
-                                df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['variables'] == variable)]),
-                            'name': str(variable),
-                            'showlegend': True
-                        }
-                        frame_data.append(data)
-                        absolute_max_bin = len(data['x'])
-                        max_bin = max(max_bin, absolute_max_bin)
-                else:
+                for variable in variables:
+
+                    df_plot_of_year_by_var = df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['variables'] == variable)]
+
                     data = {
                         'type': 'histogram',
-                        'x': np.array(
-                            df_plot['value'].loc[df_plot['year'] == year]
-                        ),
+                        'x': np.array(df_plot_of_year_by_var),
+                        'name': str(variable),
                         'showlegend': True
                     }
                     frame_data.append(data)
-                    absolute_max_bin = len(data['x'])
+                    absolute_max_bin = df_plot_of_year_by_var.shape[0]
                     max_bin = max(max_bin, absolute_max_bin)
 
-            if histo_highlight in latitude_alias:
+            # For geographical highlighting
+            if histo_highlight in latitude_alias or histo_highlight in longitude_alias:
                 for bins in pd.unique(df_plot['bins']):
+
+                    df_plot_of_year_by_bins = df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['bins'] == bins)]
+
                     data = {
                         'type': 'histogram',
-                        'x': np.array(df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['bins'] == bins)]),
-                        'name': f"Latitude: {bins}",
+                        'x': np.array(df_plot_of_year_by_bins),
+                        'name': f"{histo_highlight}: {bins}",
                         'showlegend': True
                     }
                     frame_data.append(data)
-                    absolute_max_bin = len(data['x'])
+                    absolute_max_bin = df_plot_of_year_by_bins.shape[0]
                     max_bin = max(max_bin, absolute_max_bin)
 
-            if histo_highlight in longitude_alias:
-                for bins in pd.unique(df_plot['bins']):
-                    data = {
-                        'type': 'histogram',
-                        'x': np.array(df_plot['value'].loc[(df_plot['year'] == year) & (df_plot['bins'] == bins)]),
-                        'name': f"Longitude: {bins}",
-                        'showlegend': True
-                    }
-                    frame_data.append(data)
-                    absolute_max_bin = len(data['x'])
-                    max_bin = max(max_bin, absolute_max_bin)
-
+            # For no highlighting
             if histo_highlight == 'none':
+
+                df_plot_of_year = df_plot.loc[df_plot['year'] == year]
+
                 data = {
                     'type': 'histogram',
-                    'x': np.array(df_plot['value'].loc[df_plot['year'] == year]),
+                    'x': df_plot_of_year['value'],
                     'showlegend': False
                 }
                 frame_data.append(data)
-                absolute_max_bin = len(data['x'])
+                absolute_max_bin = df_plot_of_year.shape[0]
                 max_bin = max(max_bin, absolute_max_bin)
 
             frame = go.Frame(data=frame_data, name=str(year))
@@ -523,7 +516,7 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
                     autorange=False
                 ),
                 yaxis=dict(
-                    range=[0, max_bin],
+                    range=[0, max_bin + (0.05 * max_bin)],
                     autorange=False
                 ),
                 title="Histogram animated",
@@ -557,10 +550,10 @@ def plot_histogram(df_plot, histo_type, histo_highlight, discrete_latlong_size, 
         bin_count = rounded_bounds / bin_size
 
         fig.update_traces(xbins=dict(
-            start=view_min,
-            end=view_max,
-            size=(rounded_bounds / bin_count)
-        ))
+                              start=view_min,
+                              end=view_max,
+                              size=(rounded_bounds / bin_count) if bin_count > 0 else 0.5
+                          ))
 
     return fig
 
@@ -612,7 +605,7 @@ def construct_histo_trace(df, bins=None, filters=[], highlight=''):
     return trace
 
 
-# Add trace
+# Add trace for control chart
 def add_markers(df, fig, marker_name, marker_color) -> go.Figure:
     fig.add_trace(go.Scatter(
         x=df['time'],
@@ -643,6 +636,7 @@ def make_bins(bin_size, bin_min, bin_max) -> Tuple[list, list]:
     bins_labels = []
     bin_val = bin_min
     previous_bin = bin_min
+
     while bin_val <= bin_max:
         bins.append(bin_val)
         if bin_val > bin_min:
