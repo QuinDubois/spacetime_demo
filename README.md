@@ -1,3 +1,4 @@
+## This fork is now archival as of October 31, 2022, current working repository located at: https://github.com/alexburn17/spacetime_demo
 
 
 ![Spacetime logo](/Users/pburnham/Desktop/barracudaDocumentation/barraLogo.jpg)
@@ -81,4 +82,5 @@ pip install spacetime
 - Brian McGill
 - Nicholas Gotelli
 - Matt Dube
+- Quinlan Dubois
 
